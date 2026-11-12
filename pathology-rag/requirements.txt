@@ -2,6 +2,11 @@ llama-index-core
 llama-index-embeddings-huggingface
 llama-index-vector-stores-qdrant
 qdrant-client
+langgraph
+langchain-core
+fastapi
+uvicorn
+duckduckgo-search
 docling
 pyyaml
 httpx
