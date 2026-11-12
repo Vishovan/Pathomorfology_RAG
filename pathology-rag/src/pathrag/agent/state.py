@@ -8,7 +8,7 @@ class AgentState(TypedDict, total=False):
     query: str
     mode: str | None  # явный выбор режима: 'pathology', 'images', 'legal', 'literature', 'auto'
     chat_history: list[dict[str, str]]
-    llm_provider: str | None  # 'gigachat', 'groq', 'free_cloud', 'qwen_local', 'openai_compat', 'auto'
+    llm_provider: str | None  # 'groq', 'gemini', 'openrouter', 'tbank_local', 'gigachat', 'free_cloud', 'openai_compat', 'auto'
     llm_api_key: str | None
     llm_endpoint: str | None
     llm_model: str | None
@@ -29,7 +29,9 @@ class AgentState(TypedDict, total=False):
     needs_external_search: bool
     rewritten_query: str | None
 
-    # Итоговый ответ
+    # Итоговый ответ и метаданные
     final_answer: str
     citations: list[dict[str, str]]
     disclaimer: str
+    llm_used: str | None
+    is_llm_generated: bool | None
