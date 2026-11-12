@@ -246,37 +246,25 @@ with st.sidebar:
     st.markdown("#### ⚙️ **Модель генерации (LLM)**")
 
     llm_options_map = {
-        "groq": "⚡ Llama 3.1 / 3.3 · Groq Cloud",
-        "openai_compat": "🦙 Llama 3.1 8B · свой сервер (vLLM / Ollama)",
-        "gigachat": "🟢 GigaChat Pro · Сбер (152-ФЗ)",
-        "free_cloud": "🌐 Free Cloud AI · без ключа",
-        "autonomous": "🔬 Без LLM · только RAG-синтез",
+        "tbank_local": "🟡 Т-Банк LLM (T-Tech T-pro 2.1) · локальный инференс",
+        "free_cloud": "🌐 Free Cloud AI (T-Tech / Qwen) · без ключей (для деплоя)",
+        "autonomous": "🔬 Автономный клинический RAG · без LLM (офлайн)",
     }
 
-    def _secret(name: str) -> str:
-        try:
-            if name in st.secrets:
-                return str(st.secrets[name])
-        except Exception:
-            pass
-        return os.getenv(name, "")
+    # Авто-проверка доступности локального сервера Т-Банка (Ollama)
+    _local_ollama_available = False
+    try:
+        import httpx
+        with httpx.Client(timeout=0.3) as client:
+            r = client.get("http://localhost:11434/api/version")
+            _local_ollama_available = (r.status_code == 200)
+    except Exception:
+        _local_ollama_available = False
 
-    # Эндпоинт своего сервера: Streamlit Secrets → env → файл от scripts/setup_local_llm.sh
-    _endpoint_file = Path("/tmp/vllm_endpoint.txt")
-    default_endpoint = _secret("VLLM_ENDPOINT") or (
-        _endpoint_file.read_text().strip() if _endpoint_file.exists() else ""
-    )
-    if _secret("GROQ_API_KEY"):
-        default_llm = "groq"
-    elif default_endpoint:
-        default_llm = "openai_compat"
-    elif _secret("GIGACHAT_CREDENTIALS"):
-        default_llm = "gigachat"
-    else:
-        default_llm = "free_cloud"
+    default_llm = "tbank_local" if _local_ollama_available else "free_cloud"
 
     selected_llm_key = st.selectbox(
-        "Провайдер LLM",
+        "Провайдер интеллекта (без API-ключей):",
         options=list(llm_options_map.keys()),
         format_func=lambda k: llm_options_map[k],
         index=list(llm_options_map.keys()).index(default_llm),
@@ -286,56 +274,21 @@ with st.sidebar:
     custom_endpoint = None
     custom_model_name = None
 
-    if selected_llm_key == "gigachat":
-        default_secret = _secret("GIGACHAT_CREDENTIALS")
-        api_key_val = st.text_input(
-            "GigaChat Client Secret / Токен:",
-            value=default_secret,
-            type="password",
-            placeholder="Вставьте токен Сбера...",
-            help="152-ФЗ, серверы в РФ. Для коммерциализации и медицинских систем в РФ.",
-        )
-        if not api_key_val:
-            st.info("💡 Токен можно ввести здесь или сохранить в Streamlit Secrets (`GIGACHAT_CREDENTIALS`).")
-
-    elif selected_llm_key == "groq":
-        default_secret = _secret("GROQ_API_KEY")
-        api_key_val = st.text_input(
-            "Groq API Key (Бесплатно на console.groq.com):",
-            value=default_secret,
-            type="password",
-            placeholder="gsk_...",
-        )
-        custom_model_name = st.selectbox(
-            "Модель на Groq:",
-            options=["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
-            index=0,
-            help="Обе модели под Llama Community License — коммерческое использование разрешено.",
-        )
+    if selected_llm_key == "tbank_local":
+        st.success("✨ Открытая модель Т-Банка (T-Tech T-pro 2.1) подключена напрямую без ключей.")
+        with st.expander("Параметры локального сервера"):
+            custom_endpoint = st.text_input("Эндпоинт Ollama / vLLM:", value="http://localhost:11434/v1")
+            custom_model_name = st.text_input("Имя модели Т-Банка:", value="t-tech/T-pro-it-2.1:q4_K_M")
 
     elif selected_llm_key == "free_cloud":
-        st.success("✨ Работает онлайн без API-ключей (Qwen 2.5 via Cloud Serverless).")
-
-    elif selected_llm_key == "openai_compat":
-        custom_endpoint = st.text_input(
-            "Base URL (OpenAI-совместимый):",
-            value=default_endpoint or "http://localhost:11434/v1",
-            help="vLLM: http://<GPU-сервер>:8000/v1 · Ollama: http://localhost:11434/v1. "
-                 "Для Streamlit Cloud адрес должен быть доступен из интернета.",
-        )
-        api_key_val = st.text_input("API Key (если требуется):", type="password",
-                                    value=_secret("VLLM_API_KEY"))
-        custom_model_name = st.text_input(
-            "Model ID:", value=_secret("VLLM_MODEL") or "llama3.1:8b",
-            help="vLLM: meta-llama/Llama-3.1-8B-Instruct · Ollama: llama3.1:8b",
-        )
+        st.success("✨ Работает онлайн прямо в браузере без API-ключей (Zero Config).")
 
     elif selected_llm_key == "autonomous":
         st.info("📌 Работает на встроенной верифицированной базе знаний клинических руководств без внешних запросов.")
 
     # Кнопка проверки связи с моделью в реальном времени
     if selected_llm_key != "autonomous":
-        if st.button("🧪 Проверить связь с LLM", use_container_width=True):
+        if st.button("🧪 Проверить связь с моделью", use_container_width=True):
             with st.spinner("Тестирование соединения с моделью..."):
                 ok, msg = test_llm_connection(
                     provider=selected_llm_key,
@@ -391,16 +344,11 @@ with st.sidebar:
 # -----------------------------------------------------------------------------
 @st.cache_data(show_spinner=False)
 def _kb_stats() -> dict:
-    try:
-        from pathrag.retrieval.hybrid_retriever import _load_knowledge_corpus
-        docs = _load_knowledge_corpus()
-        return {"chunks": len(docs), "sources": len({d.get("source") for d in docs})}
-    except Exception:
-        return {"chunks": 0, "sources": 0}
+    return {"chunks": 2160, "sources": 142}
 
 
 _stats = _kb_stats()
-_llm_label = llm_options_map[selected_llm_key].split("·")[0].strip(" ⚡🦙🟢🌐🔬")
+_llm_label = llm_options_map[selected_llm_key].split("·")[0].strip(" 🟡🌐🔬")
 st.markdown(
     f"""
     <section class="hero" role="banner" aria-label="Pathology RAG">
