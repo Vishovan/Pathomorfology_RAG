@@ -15,6 +15,7 @@
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 # Добавляем пути к модулям системы
 CURRENT_DIR = Path(__file__).resolve().parent
