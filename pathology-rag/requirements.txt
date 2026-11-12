@@ -1,0 +1,12 @@
+llama-index-core
+llama-index-embeddings-huggingface
+llama-index-vector-stores-qdrant
+qdrant-client
+docling
+pyyaml
+httpx
+beautifulsoup4
+lxml
+pytest
+pillow
+transformers   # нужен только для PLIP (PATHRAG_IMAGE_MODEL=vinid/plip)

@@ -1,0 +1,307 @@
+# sources.yaml: реестр источников для RAG по патоморфологии
+# Статусы и лицензии ниже НЕ проверены: заполняются на Этапе 1 (инвентаризация).
+#
+# Поля:
+#   id          уникальный идентификатор (snake_case)
+#   name        название
+#   url         адрес
+#   kind        textbook | atlas | wsi | classification | reference | dataset | code | preprint | search
+#   modality    text | image | image_text | wsi | mixed
+#   language    ru | en | ru_en
+#   access      download | scrape | api | manual | none   (как получаем данные)
+#   ingest      как используется в графе:
+#                 index_text   -> text_rag (LlamaIndex, векторный индекс текста)
+#                 index_image  -> image_search (подпись + метаданные + эмбеддинг)
+#                 links_only   -> храним только ссылки и превью
+#                 tool         -> вызывается как инструмент агента, без массового индекса
+#                 reference    -> справочно, в индекс не идёт (код, бенчмарк)
+#   priority    1 (высший) .. 3
+#   license     unknown | open | restricted | paid  (проверить условия использования)
+#   status      unverified | alive | dead | partial  (результат проверки ссылки)
+#   last_checked  дата проверки (YYYY-MM-DD) или null
+#   notes       заметки
+
+version: 1
+project: pathology-rag
+updated: 2026-11-12
+
+defaults:
+  status: unverified
+  license: unknown
+  last_checked: null
+
+# Метаданные, которые нужно сохранять для каждого чанка и изображения
+metadata_schema:
+  text_chunk: [source_id, title, chapter, page, nosology, language, url]
+  image: [source_id, image_url, thumbnail_path, caption, diagnosis, stain, magnification, organ, language, page_url]
+
+# ---------------------------------------------------------------
+# 1. Локальные учебники (уже собраны)
+# ---------------------------------------------------------------
+local:
+  - id: local_textbooks_pathology
+    name: Учебники по патологической анатомии / патоморфологии (локальная коллекция)
+    path: ./data/raw/textbooks/        # TODO: указать реальный путь
+    kind: textbook
+    modality: text
+    language: ru_en                    # уточнить по составу
+    access: download
+    ingest: index_text
+    priority: 1
+    license: unknown                   # для внутреннего использования, уточнить
+    parsing: docling                   # docling | unstructured; OCR для сканов
+    notes: Первым делом индексируем 2-3 книги для первого прогона. Сохранять книгу, главу, страницу, нозологию.
+
+# ---------------------------------------------------------------
+# 2. Российские образовательные и клинические порталы
+# ---------------------------------------------------------------
+russian_portals:
+  - id: path_anatomy_ru
+    name: path-anatomy.ru, интерактивный атлас микропрепаратов
+    url: https://path-anatomy.ru
+    kind: atlas
+    modality: image_text
+    language: ru
+    access: scrape
+    ingest: index_image
+    priority: 1
+    notes: Препараты с разметкой патологических процессов, увеличение до 400x. Проверить, есть ли доступ к подписям без интерактивного вьюера.
+
+  - id: hist_ysmu_gp
+    name: hist.ysmu.ru, коллекция препаратов по общей патологии
+    url: https://hist.ysmu.ru/gp/index.html
+    kind: atlas
+    modality: image_text
+    language: ru
+    access: scrape
+    ingest: index_image
+    priority: 1
+    notes: Эталонный набор «препарат - описание». Хорош для валидации поиска картинок.
+
+  - id: ipath_ru
+    name: ipath.ru
+    url: https://ipath.ru
+    kind: reference
+    modality: mixed
+    language: ru
+    access: manual
+    ingest: index_text
+    priority: 3
+    notes: Проверить наличие клинических случаев, лекций, методических материалов.
+
+  - id: pathanatom_ru
+    name: pathanatom.ru
+    url: https://pathanatom.ru
+    kind: reference
+    modality: mixed
+    language: ru
+    access: manual
+    ingest: index_text
+    priority: 3
+    notes: Проверить наличие клинических случаев, лекций, методических материалов.
+
+  - id: edu_geotar_ru
+    name: edu.geotar.ru, оцифрованные микропрепараты
+    url: https://edu.geotar.ru
+    kind: atlas
+    modality: image_text
+    language: ru
+    access: manual
+    ingest: index_image
+    priority: 2
+    notes: Высокое качество изображений, кандидат для мультимодального поиска. Проверить условия использования.
+
+# ---------------------------------------------------------------
+# 3. Международные атласы и базы изображений (WSI)
+# ---------------------------------------------------------------
+international_atlases:
+  - id: webpath_utah
+    name: WebPath (University of Utah)
+    url: https://webpath.med.utah.edu
+    kind: atlas
+    modality: image_text
+    language: en
+    access: scrape
+    ingest: index_image
+    priority: 1
+    notes: ~2700 изображений с текстом и ~1300 экзаменационных вопросов по макро- и микропатологии. Вопросы пригодны для оценки качества (Этап 6).
+
+  - id: histopathology_atlas
+    name: Histopathology Atlas (histopathologyatlas.com / patolojiatlasi.com)
+    url: https://histopathologyatlas.com
+    alt_urls: [https://patolojiatlasi.com]
+    kind: atlas
+    modality: wsi
+    language: en
+    access: scrape
+    ingest: index_image
+    priority: 2
+    notes: Двуязычный открытый атлас, 265+ случаев и WSI, открытый код и релизы. Возможно, данные доступны через репозиторий без парсинга сайта.
+
+  - id: pathpresenter_public
+    name: PathPresenter Public
+    url: https://pathpresenter.com
+    kind: wsi
+    modality: wsi
+    language: en
+    access: manual
+    ingest: links_only
+    priority: 2
+    notes: Облачная библиотека WSI со встроенным вьюером. Хранить ссылки на слайды, не сами файлы.
+
+  - id: rosai_collection
+    name: Juan Rosai Collection
+    url: https://rosaicollection.org
+    kind: wsi
+    modality: wsi
+    language: en
+    access: manual
+    ingest: links_only
+    priority: 2
+    notes: Редкие и классические случаи.
+
+  - id: leeds_virtual_pathology
+    name: Leeds Virtual Microscopy
+    url: https://virtualpathology.leeds.ac.uk
+    kind: wsi
+    modality: wsi
+    language: en
+    access: manual
+    ingest: links_only
+    priority: 3
+    notes: Цифровые слайды и экзаменационные случаи постдипломного уровня.
+
+  - id: mgh_pathology
+    name: MGH Pathology (learn.mghpathology.org)
+    url: https://learn.mghpathology.org
+    kind: wsi
+    modality: wsi
+    language: en
+    access: manual
+    ingest: links_only
+    priority: 3
+    notes: Общая патология и интраоперационные замороженные срезы.
+
+# ---------------------------------------------------------------
+# 4. Классификации и нормативные базы
+# ---------------------------------------------------------------
+classifications:
+  - id: who_tumour_classification
+    name: WHO Classification of Tumours (IARC online)
+    url: https://tumourclassification.iarc.who.int
+    kind: classification
+    modality: mixed
+    language: en
+    access: manual
+    ingest: index_text
+    priority: 1
+    license: restricted
+    notes: Часть содержимого может быть за регистрацией или платной. Обязательно проверить ToS до любого парсинга. Классификации обновляются, хранить версию издания в метаданных.
+
+  - id: molecular_neuropathology
+    name: molecularneuropathology.org, классификатор опухолей ЦНС
+    url: https://www.molecularneuropathology.org
+    kind: classification
+    modality: text
+    language: en
+    access: manual
+    ingest: index_text
+    priority: 2
+    notes: Бесплатный онлайн-классификатор по WHO.
+
+  - id: pathologyoutlines
+    name: PathologyOutlines
+    url: https://www.pathologyoutlines.com
+    kind: reference
+    modality: image_text
+    language: en
+    access: scrape
+    ingest: index_text
+    priority: 1
+    license: restricted
+    notes: Структурированные обзоры по нозологиям, очень полезны для RAG. Условия сайта, вероятно, ограничивают массовое копирование. Проверить ToS, при запрете хранить только ссылки и краткие выдержки.
+
+# ---------------------------------------------------------------
+# 5. RAG-референсы и датасеты
+# ---------------------------------------------------------------
+references_and_datasets:
+  - id: patho_agentic_rag
+    name: Patho-AgenticRAG (Wenchuan-Zhang)
+    url: https://github.com/Wenchuan-Zhang/Patho-AgenticRAG
+    kind: code
+    modality: mixed
+    language: en
+    access: download
+    ingest: reference
+    priority: 1
+    notes: Референс мультимодальной агентной RAG с page-level эмбеддингами. Изучить архитектуру, не индексировать.
+
+  - id: histai
+    name: HISTAI (HistAI)
+    url: https://github.com/HistAI/HISTAI
+    kind: dataset
+    modality: wsi
+    language: en
+    access: manual
+    ingest: links_only
+    priority: 3
+    notes: 60 000+ WSI. Объём огромный, хранить только ссылки и превью.
+
+  - id: tcia_pathology
+    name: TCIA Pathology (NCI Cancer Imaging Archive)
+    url: https://pathology.cancerimagingarchive.net
+    kind: dataset
+    modality: wsi
+    language: en
+    access: manual
+    ingest: links_only
+    priority: 3
+    notes: Аннотированные WSI и объекты радиология + патология. Проверить требования доступа.
+
+  - id: dalphin_benchmark
+    name: DALPHIN benchmark (Zenodo)
+    url: https://zenodo.org
+    kind: dataset
+    modality: image_text
+    language: en
+    access: download
+    ingest: reference
+    priority: 1
+    notes: Бенчмарк AI-копилотов в цифровой патологии (1236 изображений, 1757 вопросов). Используем для оценки (Этап 6). TODO - найти точную ссылку на запись на Zenodo.
+
+# ---------------------------------------------------------------
+# 6. Инструменты агента (не индексируются массово)
+# ---------------------------------------------------------------
+tools:
+  - id: arxiv
+    name: arXiv
+    url: https://arxiv.org
+    kind: preprint
+    modality: text
+    language: en
+    access: api
+    ingest: tool
+    priority: 2
+    notes: Поиск через API по запросу, ответ с цитатой и ссылкой.
+
+  - id: biorxiv
+    name: bioRxiv
+    url: https://www.biorxiv.org
+    kind: preprint
+    modality: text
+    language: en
+    access: api
+    ingest: tool
+    priority: 2
+    notes: Препринты, помечать в ответе как непроверенные рецензированием.
+
+  - id: web_search
+    name: Простой веб-поиск
+    kind: search
+    modality: text
+    language: ru_en
+    access: api
+    ingest: tool
+    priority: 1
+    provider: tavily          # tavily | searxng | brave; выбрать
+    notes: Fallback при недостаточном контексте из индекса. Ответ с веб-источниками помечать отдельно.
