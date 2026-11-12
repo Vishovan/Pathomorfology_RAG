@@ -1,30 +1,22 @@
 """Streamlit Web Application для Pathology RAG (деплой на share.streamlit.io).
 
-Ультрасовременный минималистичный интерфейс в темной теме (Dark Obsidian Theme):
-- Темная стилистика Linear / Vercel (глубокий графит, мягкий неоновый акцент, frosted cards);
-- Прямой вывод микропрепаратов через st.image (без битых редиректов на GitHub);
-- Активная загрузка коммерческих и открытых LLM:
-    * Сбер GigaChat Pro (152-ФЗ, официальная лицензия для РФ);
-    * Groq Cloud (сверхбыстрый бесплатный инференс Qwen 2.5 / Llama 3.3);
-    * OpenRouter / DeepSeek / vLLM / Ollama;
-    * Free Cloud AI (Pollinations Qwen 2.5 без ключей);
-    * Автономный клинический анализатор;
-- Специализированный RAG по РМЖ (HER2 0/1+/2+/3+, FISH, Ki-67, Allred, Nottingham);
-- Режим юриста: Роспатент, Минцифры, Росздравнадзор (Non-SaMD) и 12 стандартов ГОСТ.
+Светлый «клинический» интерфейс над LangGraph-агентом (pathrag.agent):
+- выбор LLM-провайдера: Groq, Gemini, OpenRouter, Ollama / vLLM (Т-Банк), GigaChat, Free Cloud,
+  либо автономный режим без LLM;
+- специализированный RAG по РМЖ (HER2 0/1+/2+/3+, FISH, Ki-67, Allred, Nottingham) и общей патоморфологии;
+- микропрепараты и ссылки на WSI;
+- режим юриста: Роспатент, Минцифры, Росздравнадзор (Non-SaMD) и стандарты ГОСТ.
 """
-import os
+import html
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
-# Добавляем пути к модулям системы
+# Streamlit Cloud не устанавливает пакет, поэтому добавляем src/ в путь импорта.
+# Корневой /streamlit_app.py репозитория — тонкая точка входа, запускающая этот файл.
 CURRENT_DIR = Path(__file__).resolve().parent
-if (CURRENT_DIR / "pathology-rag" / "src").exists():
-    sys.path.insert(0, str(CURRENT_DIR / "pathology-rag" / "src"))
-    sys.path.insert(0, str(CURRENT_DIR / "pathology-rag"))
-elif (CURRENT_DIR / "src").exists():
-    sys.path.insert(0, str(CURRENT_DIR / "src"))
-    sys.path.insert(0, str(CURRENT_DIR))
+sys.path.insert(0, str(CURRENT_DIR / "src"))
 
 import streamlit as st
 
@@ -462,6 +454,11 @@ with st.sidebar:
             placeholder="Вставьте токен Сбера...",
         )
         custom_model_name = "GigaChat-Pro"
+        if not get_secret_or_env("GIGACHAT_CA_BUNDLE") and get_secret_or_env("GIGACHAT_VERIFY_SSL", "true").lower() != "false":
+            st.caption(
+                "🔐 GigaChat использует сертификат НУЦ Минцифры. Если проверка связи не проходит, "
+                "укажите `GIGACHAT_CA_BUNDLE` (путь к корневому сертификату) в secrets."
+            )
 
     elif selected_llm_key == "autonomous":
         st.info("📌 Работает на встроенной верифицированной базе знаний клинических руководств без внешних запросов к LLM.")
@@ -524,7 +521,14 @@ with st.sidebar:
 # -----------------------------------------------------------------------------
 @st.cache_data(show_spinner=False)
 def _kb_stats() -> dict:
-    return {"chunks": 2160, "sources": 142}
+    """Фактический размер локальной базы знаний (фрагменты и уникальные источники)."""
+    try:
+        from pathrag.retrieval.hybrid_retriever import _corpus
+
+        corpus = _corpus()
+        return {"chunks": len(corpus), "sources": len({d.get("url") or d.get("source") for d in corpus})}
+    except Exception:
+        return {"chunks": "—", "sources": "—"}
 
 
 _stats = _kb_stats()
@@ -572,37 +576,103 @@ with col4:
 
 
 def resolve_img_source(img_dict: dict) -> str | None:
-    """Безопасно разрешает локальный путь или прямой веб-URL без редиректов на гит."""
+    """Локальный путь к микрофотографии (если файл есть в репозитории) или прямой веб-URL."""
     loc = img_dict.get("local_path")
-    if loc:
-        p1 = CURRENT_DIR / loc
-        if p1.exists():
-            return str(p1)
-        p2 = CURRENT_DIR / "pathology-rag" / loc
-        if p2.exists():
-            return str(p2)
+    if loc and (CURRENT_DIR / loc).exists():
+        return str(CURRENT_DIR / loc)
     return img_dict.get("image_url")
+
+
+def _esc(value: Any, default: str = "") -> str:
+    """Экранирование значений, попадающих в HTML (подписи могут прийти из краулинга чужих сайтов)."""
+    return html.escape(str(value if value not in (None, "") else default))
+
+
+def _safe_url(url: Any) -> str:
+    """Только http(s)-ссылки: javascript:/data: и прочие схемы отбрасываются."""
+    u = str(url or "").strip()
+    return html.escape(u) if re.match(r"^https?://", u, re.IGNORECASE) else ""
 
 
 def render_citations(citations: list[dict]) -> None:
     """Список источников: номер, название, ссылка и лицензия (если есть)."""
-    import html as _h
-    import re as _re
-
     rows = []
     for i, c in enumerate(citations, 1):
         ref = str(c.get("reference") or "")
-        url_m = _re.search(r"https?://\S+", ref)
-        url = c.get("url") or (url_m.group(0) if url_m else "")
-        meta = _h.escape(_re.sub(r"https?://\S+", "", ref).strip(" ·"))
-        link = f' · <a href="{_h.escape(url)}" target="_blank" rel="noopener noreferrer">открыть ↗</a>' if url else ""
+        url_m = re.search(r"https?://\S+", ref)
+        url = _safe_url(c.get("url") or (url_m.group(0) if url_m else ""))
+        meta = _esc(re.sub(r"https?://\S+", "", ref).strip(" ·"))
+        link = f' · <a href="{url}" target="_blank" rel="noopener noreferrer">открыть ↗</a>' if url else ""
         rows.append(
             f'<div class="cite"><span class="cite-n">{i}</span><div>'
-            f'<div class="cite-src">{_h.escape(str(c.get("source") or ""))}</div>'
-            f'<div class="cite-meta">{_h.escape(str(c.get("title") or ""))}{" · " + meta if meta else ""}{link}</div>'
+            f'<div class="cite-src">{_esc(c.get("source"))}</div>'
+            f'<div class="cite-meta">{_esc(c.get("title"))}{" · " + meta if meta else ""}{link}</div>'
             f'</div></div>'
         )
     st.markdown("".join(rows), unsafe_allow_html=True)
+
+
+def _micro_card_html(img: dict) -> str:
+    wsi_link = _safe_url(img.get("wsi_url") or img.get("image_url"))
+    wsi_btn = (
+        f'<a href="{wsi_link}" target="_blank" rel="noopener noreferrer" class="wsi-action-btn-med">'
+        f'🔬 Открыть WSI в полном разрешении ↗</a>' if wsi_link else ""
+    )
+    return f"""
+        <div class="micro-card-med">
+            <strong style="color: #0F172A; font-size: 0.95rem;">{_esc(img.get('title'), 'Препарат')}</strong>
+            <div class="card-meta-bar">
+                <span class="meta-tag-med">📍 {_esc(img.get('organ'), '-')}</span>
+                <span class="meta-tag-med">🔬 {_esc(img.get('stain'), 'H&E')}</span>
+                <span class="meta-tag-med">🔍 {_esc(img.get('magnification'), '-')}</span>
+            </div>
+            <p style="font-size:0.83rem; color:#475569; margin:6px 0 10px 0; line-height:1.45;">{_esc(img.get('caption'))}</p>
+            <small style="color:#64748B;">Источник: {_esc(img.get('source_name'), 'Атлас')}</small><br>
+            {wsi_btn}
+        </div>
+    """
+
+
+def render_images(images: list[dict]) -> None:
+    if not images:
+        return
+    st.markdown("##### 📸 Микропрепараты и гистологические срезы:")
+    cols = st.columns(min(len(images), 2))
+    for i, img in enumerate(images[:4]):
+        with cols[i % 2]:
+            caption = img.get("title", "Микропрепарат")
+            src = resolve_img_source(img)
+            if src:
+                try:
+                    _img_stretch(src, caption=caption)
+                except Exception:
+                    if img.get("image_url") and img.get("image_url") != src:
+                        _img_stretch(img["image_url"], caption=caption)
+            st.markdown(_micro_card_html(img), unsafe_allow_html=True)
+
+
+def render_message(msg: dict) -> None:
+    """Отрисовка одного сообщения ленты (используется и для истории, и для нового ответа)."""
+    if msg["role"] == "assistant" and msg.get("intent") and msg["intent"] != "system_welcome":
+        chips = [f'<span class="badge-chip badge-blue">Маршрут: {_esc(msg["intent"])}</span>']
+        if msg.get("llm_used"):
+            chips.append(f'<span class="badge-chip badge-emerald">🧠 {_esc(msg["llm_used"])}</span>')
+        st.markdown(" ".join(chips), unsafe_allow_html=True)
+
+    st.markdown(msg["content"])
+    render_images(msg.get("images") or [])
+
+    citations = msg.get("citations") or []
+    if citations:
+        with st.expander(f"📚 Источники · {len(citations)}"):
+            render_citations(citations)
+
+    if msg.get("disclaimer"):
+        st.markdown(f'<div class="regulatory-notice-med">{_esc(msg["disclaimer"])}</div>', unsafe_allow_html=True)
+
+
+def _avatar(role: str) -> str:
+    return "🧑‍⚕️" if role == "user" else "🔬"
 
 
 # История сообщений чата
@@ -628,57 +698,8 @@ if "messages" not in st.session_state:
 
 # Отрисовка ленты диалога
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"], avatar="🧑‍⚕️" if msg["role"] == "user" else "🔬"):
-        if msg.get("intent") and msg["role"] == "assistant" and msg.get("intent") != "system_welcome":
-            chips = [f'<span class="badge-chip badge-blue">Маршрут: {msg["intent"]}</span>']
-            if msg.get("llm_used"):
-                chips.append(f'<span class="badge-chip badge-emerald">🧠 {msg["llm_used"]}</span>')
-            st.markdown(" ".join(chips), unsafe_allow_html=True)
-
-        st.markdown(msg["content"])
-
-        # Отрисовка микропрепаратов
-        images = msg.get("images", [])
-        if images:
-            st.markdown("##### 📸 Микропрепараты и гистологические срезы:")
-            cols = st.columns(min(len(images), 2))
-            for i, img in enumerate(images[:4]):
-                with cols[i % 2]:
-                    src = resolve_img_source(img)
-                    if src:
-                        try:
-                            _img_stretch(src, caption=img.get("title", "Микропрепарат"))
-                        except Exception:
-                            if img.get("image_url"):
-                                _img_stretch(img.get("image_url"), caption=img.get("title", "Микропрепарат"))
-
-                    wsi_link = img.get("wsi_url") or img.get("image_url") or ""
-                    st.markdown(
-                        f"""
-                        <div class="micro-card-med">
-                            <strong style="color: #0F172A; font-size: 0.95rem;">{img.get('title', 'Препарат')}</strong>
-                            <div class="card-meta-bar">
-                                <span class="meta-tag-med">📍 {img.get('organ', '-')}</span>
-                                <span class="meta-tag-med">🔬 {img.get('stain', 'H&E')}</span>
-                                <span class="meta-tag-med">🔍 {img.get('magnification', '-')}</span>
-                            </div>
-                            <p style="font-size:0.83rem; color:#475569; margin:6px 0 10px 0; line-height:1.45;">{img.get('caption', '')}</p>
-                            <small style="color:#64748B;">Источник: {img.get('source_name', 'Атлас')}</small><br>
-                            {f'<a href="{wsi_link}" target="_blank" rel="noopener noreferrer" class="wsi-action-btn-med">🔬 Открыть WSI в полном разрешении ↗</a>' if wsi_link else ''}
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
-        # Вывод источников
-        citations = msg.get("citations", [])
-        if citations:
-            with st.expander(f"📚 Источники · {len(citations)}"):
-                render_citations(citations)
-
-        # Вывод регуляторного дисклеймера
-        if msg.get("disclaimer"):
-            st.markdown(f'<div class="regulatory-notice-med">{msg["disclaimer"]}</div>', unsafe_allow_html=True)
+    with st.chat_message(msg["role"], avatar=_avatar(msg["role"])):
+        render_message(msg)
 
 
 # -----------------------------------------------------------------------------
@@ -686,25 +707,24 @@ for msg in st.session_state.messages:
 # -----------------------------------------------------------------------------
 prompt_input = st.chat_input("Задайте вопрос по патоморфологии, иммуногистохимии, WSI или стандартам ГОСТ...")
 
-# Подстановка предустановленного вопроса по клику
-if "active_preset" in st.session_state and st.session_state["active_preset"]:
-    prompt_input = st.session_state["active_preset"]
-    st.session_state["active_preset"] = None
+# Подстановка предустановленного вопроса по клику (введённый вручную текст важнее)
+preset = st.session_state.pop("active_preset", None)
+if not prompt_input and preset:
+    prompt_input = preset
 
 if prompt_input:
-    st.session_state.messages.append({"role": "user", "content": prompt_input})
-    with st.chat_message("user", avatar="🧑‍⚕️"):
-        st.markdown(prompt_input)
+    user_msg = {"role": "user", "content": prompt_input}
+    st.session_state.messages.append(user_msg)
+    with st.chat_message("user", avatar=_avatar("user")):
+        render_message(user_msg)
 
-    with st.chat_message("assistant", avatar="🔬"):
+    with st.chat_message("assistant", avatar=_avatar("assistant")):
         with st.spinner("Оркестрация в LangGraph (маршрутизация -> ретривер -> верификация -> генерация)..."):
-            active_m = None if chosen_mode == "auto" else chosen_mode
-            use_llm_flag = (selected_llm_key != "autonomous")
-
+            use_llm_flag = selected_llm_key != "autonomous"
             try:
                 result = ask_agent(
                     prompt_input,
-                    mode=active_m,
+                    mode=None if chosen_mode == "auto" else chosen_mode,
                     llm_provider=selected_llm_key if use_llm_flag else None,
                     llm_api_key=api_key_val,
                     llm_endpoint=custom_endpoint,
@@ -715,69 +735,18 @@ if prompt_input:
                 st.error(f"Ошибка при обработке запроса: {err}")
                 result = {
                     "intent": "error",
-                    "final_answer": f"Произошла ошибка при обращении к модели: {err}. Попробуйте переключиться на 'Автономный экспертный RAG-анализ' или проверить токен.",
-                    "citations": [],
+                    "final_answer": f"Произошла ошибка при обращении к модели: {err}. Попробуйте переключиться на «Автономный RAG-синтез» или проверить токен.",
                     "disclaimer": "Справочно-образовательная система.",
-                    "retrieved_images": [],
                 }
 
-            intent = result.get("intent", "pathology_qa")
-            answer = result.get("final_answer", "")
-            citations = result.get("citations", [])
-            disclaimer = result.get("disclaimer", "")
-            images = result.get("retrieved_images", [])
-            llm_used = result.get("llm_used")
-
-            chips = [f'<span class="badge-chip badge-blue">Маршрут: {intent}</span>']
-            if llm_used:
-                chips.append(f'<span class="badge-chip badge-emerald">🧠 {llm_used}</span>')
-            st.markdown(" ".join(chips), unsafe_allow_html=True)
-            st.markdown(answer)
-
-            if images:
-                st.markdown("##### 📸 Микропрепараты и гистологические срезы:")
-                cols = st.columns(min(len(images), 2))
-                for i, img in enumerate(images[:4]):
-                    with cols[i % 2]:
-                        src = resolve_img_source(img)
-                        if src:
-                            try:
-                                _img_stretch(src, caption=img.get("title", "Микропрепарат"))
-                            except Exception:
-                                if img.get("image_url"):
-                                    _img_stretch(img.get("image_url"), caption=img.get("title", "Микропрепарат"))
-
-                        wsi_link = img.get("wsi_url") or img.get("image_url") or ""
-                        st.markdown(
-                            f"""
-                            <div class="micro-card-med">
-                                <strong style="color: #0F172A; font-size: 0.95rem;">{img.get('title', 'Препарат')}</strong>
-                                <div class="card-meta-bar">
-                                    <span class="meta-tag-med">📍 {img.get('organ', '-')}</span>
-                                    <span class="meta-tag-med">🔬 {img.get('stain', 'H&E')}</span>
-                                    <span class="meta-tag-med">🔍 {img.get('magnification', '-')}</span>
-                                </div>
-                                <p style="font-size:0.83rem; color:#475569; margin:6px 0 10px 0; line-height:1.45;">{img.get('caption', '')}</p>
-                                <small style="color:#64748B;">Источник: {img.get('source_name', 'Атлас')}</small><br>
-                                {f'<a href="{wsi_link}" target="_blank" rel="noopener noreferrer" class="wsi-action-btn-med">🔬 Открыть WSI в полном разрешении ↗</a>' if wsi_link else ''}
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-
-            if citations:
-                with st.expander(f"📚 Источники · {len(citations)}"):
-                    render_citations(citations)
-
-            if disclaimer:
-                st.markdown(f'<div class="regulatory-notice-med">{disclaimer}</div>', unsafe_allow_html=True)
-
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": answer,
-                "intent": intent,
-                "images": images,
-                "citations": citations,
-                "disclaimer": disclaimer,
-                "llm_used": llm_used,
-            })
+        assistant_msg = {
+            "role": "assistant",
+            "content": result.get("final_answer", ""),
+            "intent": result.get("intent", "pathology_qa"),
+            "images": result.get("retrieved_images", []),
+            "citations": result.get("citations", []),
+            "disclaimer": result.get("disclaimer", ""),
+            "llm_used": result.get("llm_used"),
+        }
+        render_message(assistant_msg)
+        st.session_state.messages.append(assistant_msg)

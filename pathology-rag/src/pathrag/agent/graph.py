@@ -1,5 +1,6 @@
 """Построение и компиляция графа LangGraph для Pathology RAG."""
 from typing import Any
+
 from langgraph.graph import END, StateGraph
 
 from .nodes import (
@@ -13,21 +14,19 @@ from .nodes import (
 )
 from .state import AgentState
 
+_INTENT_TO_NODE = {
+    "breast_cancer_ihc": "retrieve_pathology",
+    "pathology_qa": "retrieve_pathology",
+    "image_search": "image_search",
+    "legal_gost": "legal_consultant",
+    "literature_search": "literature_search",
+    "conversational": "generate_answer",
+}
+
 
 def router_decision(state: AgentState) -> str:
     """Выбор следующего шага после маршрутизатора."""
-    intent = state.get("intent", "pathology_qa")
-    if intent in ("breast_cancer_ihc", "pathology_qa"):
-        return "retrieve_pathology"
-    elif intent == "image_search":
-        return "image_search"
-    elif intent == "legal_gost":
-        return "legal_consultant"
-    elif intent == "literature_search":
-        return "literature_search"
-    elif intent == "conversational":
-        return "generate_answer"
-    return "retrieve_pathology"
+    return _INTENT_TO_NODE.get(state.get("intent", "pathology_qa"), "retrieve_pathology")
 
 
 def grader_decision(state: AgentState) -> str:
@@ -57,13 +56,7 @@ def build_pathology_graph():
     workflow.add_conditional_edges(
         "route",
         router_decision,
-        {
-            "retrieve_pathology": "retrieve_pathology",
-            "image_search": "image_search",
-            "legal_consultant": "legal_consultant",
-            "literature_search": "literature_search",
-            "generate_answer": "generate_answer",
-        },
+        {node: node for node in set(_INTENT_TO_NODE.values())},
     )
 
     # Переход от поиска патологии к грейдеру
@@ -102,18 +95,15 @@ def ask_agent(
     llm_endpoint: str | None = None,
     llm_model: str | None = None,
     use_llm: bool | None = None,
-    **kwargs: Any,
-) -> dict:
+) -> dict[str, Any]:
     """Удобная функция запуска агента для одного запроса."""
-    initial_state = {
+    initial_state: AgentState = {
         "query": query,
         "mode": mode,
-        "chat_history": [],
         "llm_provider": llm_provider,
         "llm_api_key": llm_api_key,
         "llm_endpoint": llm_endpoint,
         "llm_model": llm_model,
         "use_llm": use_llm,
     }
-    result = pathology_agent.invoke(initial_state)
-    return result
+    return pathology_agent.invoke(initial_state)

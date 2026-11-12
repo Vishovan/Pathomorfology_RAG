@@ -10,3 +10,4 @@ pyyaml
 httpx
 pillow
 pytest
+gigachat   # провайдер Сбер GigaChat (опционально)

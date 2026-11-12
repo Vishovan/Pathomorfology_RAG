@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pathrag"
+version = "0.2.0"
+description = "Pathology RAG: мультимодальный агент (LangGraph) по патоморфологии и ГОСТ"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "langgraph",
+    "langchain-core",
+    "httpx",
+    "pyyaml",
+    "pydantic",
+    "pillow",
+    "beautifulsoup4",
+    "lxml",
+    "duckduckgo-search",
+]
+
+[project.optional-dependencies]
+# Векторный индекс (Qdrant + bge-m3) и пайплайн загрузки PDF
+index = [
+    "llama-index-core",
+    "llama-index-embeddings-huggingface",
+    "llama-index-vector-stores-qdrant",
+    "qdrant-client",
+    "docling",
+    "transformers",
+]
+ui = ["streamlit>=1.30.0", "fastapi", "uvicorn"]
+gigachat = ["gigachat"]
+dev = ["pytest", "ruff"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pathrag = ["knowledge/*.json", "knowledge/corpus/*.jsonl"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+# E501: длинные строки — в основном русскоязычные промпты и тексты ответов
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Точки входа сами добавляют src/ в sys.path до импорта пакета (Streamlit Cloud не ставит пакет)
+"streamlit_app.py" = ["E402"]
+"ui/app.py" = ["E402"]
+"scripts/*.py" = ["E402"]

@@ -1,13 +1,9 @@
-import io
 import shutil
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-
-from pathrag import imeta  # noqa: E402
-from pathrag.images import make_record  # noqa: E402
-from pathrag.web_images import extract_images  # noqa: E402
+from pathrag import imeta
+from pathrag.images import make_record
+from pathrag.web_images import extract_images
 
 
 def test_magnification():

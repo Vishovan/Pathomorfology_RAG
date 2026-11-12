@@ -25,7 +25,10 @@ def _server_up() -> bool:
         return False
 
 
-pytestmark = pytest.mark.skipif(not _server_up(), reason=f"LLM сервер {ENDPOINT} не запущен")
+pytestmark = [
+    pytest.mark.network,
+    pytest.mark.skipif(not _server_up(), reason=f"LLM сервер {ENDPOINT} не запущен"),
+]
 
 
 def test_connection():
