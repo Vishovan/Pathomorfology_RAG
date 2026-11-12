@@ -287,12 +287,7 @@ with st.sidebar:
     custom_model_name = None
 
     if selected_llm_key == "gigachat":
-        default_secret = ""
-        if hasattr(st, "secrets") and "GIGACHAT_CREDENTIALS" in st.secrets:
-            default_secret = st.secrets["GIGACHAT_CREDENTIALS"]
-        elif os.getenv("GIGACHAT_CREDENTIALS"):
-            default_secret = os.getenv("GIGACHAT_CREDENTIALS", "")
-
+        default_secret = _secret("GIGACHAT_CREDENTIALS")
         api_key_val = st.text_input(
             "GigaChat Client Secret / Токен:",
             value=default_secret,
@@ -304,12 +299,7 @@ with st.sidebar:
             st.info("💡 Токен можно ввести здесь или сохранить в Streamlit Secrets (`GIGACHAT_CREDENTIALS`).")
 
     elif selected_llm_key == "groq":
-        default_secret = ""
-        if hasattr(st, "secrets") and "GROQ_API_KEY" in st.secrets:
-            default_secret = st.secrets["GROQ_API_KEY"]
-        elif os.getenv("GROQ_API_KEY"):
-            default_secret = os.getenv("GROQ_API_KEY", "")
-
+        default_secret = _secret("GROQ_API_KEY")
         api_key_val = st.text_input(
             "Groq API Key (Бесплатно на console.groq.com):",
             value=default_secret,
