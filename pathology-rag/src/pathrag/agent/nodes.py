@@ -108,6 +108,12 @@ def generate_answer_node(state: AgentState) -> dict[str, Any]:
     llm_endpoint = state.get("llm_endpoint")
     llm_model = state.get("llm_model")
 
+    use_llm_flag = state.get("use_llm")
+    if use_llm_flag is None:
+        use_llm_flag = bool(state.get("llm_provider") and state.get("llm_provider") != "autonomous")
+    if state.get("llm_provider") == "autonomous":
+        use_llm_flag = False
+
     # 1. Формирование юридического ответа
     if intent == "legal_gost":
         legal_res = state.get("legal_results", [])
@@ -129,14 +135,16 @@ def generate_answer_node(state: AgentState) -> dict[str, Any]:
             f"Объясните различия между Роспатентом, Минцифры и Росздравнадзором (медизделием), и как правильно составить ТЗ."
         )
 
-        llm_response = generate_with_llm(
-            legal_prompt,
-            system_prompt="Вы — ведущий юрисконсульт по стандартам ГОСТ и регуляторике медицинского программного обеспечения в Российской Федерации.",
-            provider=llm_provider,
-            api_key=llm_key,
-            endpoint_url=llm_endpoint,
-            model_name=llm_model,
-        )
+        llm_response = None
+        if use_llm_flag:
+            llm_response = generate_with_llm(
+                legal_prompt,
+                system_prompt="Вы — ведущий юрисконсульт по стандартам ГОСТ и регуляторике медицинского программного обеспечения в Российской Федерации.",
+                provider=llm_provider,
+                api_key=llm_key,
+                endpoint_url=llm_endpoint,
+                model_name=llm_model,
+            )
 
         if llm_response:
             answer_text = llm_response
@@ -230,14 +238,16 @@ def generate_answer_node(state: AgentState) -> dict[str, Any]:
             f"Обязательно сошлитесь на клинические рекомендации и стандарты из контекста."
         )
 
-        llm_response = generate_with_llm(
-            clinical_prompt,
-            system_prompt="Вы — ведущий врач-патологоанатом, эксперт по цифровой патоморфологии и иммуногистохимии.",
-            provider=llm_provider,
-            api_key=llm_key,
-            endpoint_url=llm_endpoint,
-            model_name=llm_model,
-        )
+        llm_response = None
+        if use_llm_flag:
+            llm_response = generate_with_llm(
+                clinical_prompt,
+                system_prompt="Вы — ведущий врач-патологоанатом, эксперт по цифровой патоморфологии и иммуногистохимии.",
+                provider=llm_provider,
+                api_key=llm_key,
+                endpoint_url=llm_endpoint,
+                model_name=llm_model,
+            )
 
         if llm_response:
             answer_text = llm_response

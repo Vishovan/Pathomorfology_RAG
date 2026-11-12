@@ -9,5 +9,4 @@ pydantic
 pyyaml
 httpx
 pillow
-gigachat
 pytest
