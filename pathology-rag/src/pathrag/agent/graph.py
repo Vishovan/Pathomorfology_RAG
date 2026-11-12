@@ -90,12 +90,21 @@ def build_pathology_graph():
 pathology_agent = build_pathology_graph()
 
 
-def ask_agent(query: str, mode: str | None = None) -> dict:
+def ask_agent(
+    query: str,
+    mode: str | None = None,
+    llm_provider: str | None = None,
+    llm_api_key: str | None = None,
+    use_llm: bool | None = None,
+) -> dict:
     """Удобная функция запуска агента для одного запроса."""
     initial_state = {
         "query": query,
         "mode": mode,
         "chat_history": [],
+        "llm_provider": llm_provider,
+        "llm_api_key": llm_api_key,
+        "use_llm": use_llm,
     }
     result = pathology_agent.invoke(initial_state)
     return result
