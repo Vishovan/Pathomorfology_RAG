@@ -1,4 +1,5 @@
 """Построение и компиляция графа LangGraph для Pathology RAG."""
+from typing import Any
 from langgraph.graph import END, StateGraph
 
 from .nodes import (
@@ -95,7 +96,10 @@ def ask_agent(
     mode: str | None = None,
     llm_provider: str | None = None,
     llm_api_key: str | None = None,
+    llm_endpoint: str | None = None,
+    llm_model: str | None = None,
     use_llm: bool | None = None,
+    **kwargs: Any,
 ) -> dict:
     """Удобная функция запуска агента для одного запроса."""
     initial_state = {
@@ -104,6 +108,8 @@ def ask_agent(
         "chat_history": [],
         "llm_provider": llm_provider,
         "llm_api_key": llm_api_key,
+        "llm_endpoint": llm_endpoint,
+        "llm_model": llm_model,
         "use_llm": use_llm,
     }
     result = pathology_agent.invoke(initial_state)

@@ -8,8 +8,10 @@ class AgentState(TypedDict, total=False):
     query: str
     mode: str | None  # явный выбор режима: 'pathology', 'images', 'legal', 'literature', 'auto'
     chat_history: list[dict[str, str]]
-    llm_provider: str | None  # 'gigachat', 'qwen_local', 'openai_compat', 'auto'
+    llm_provider: str | None  # 'gigachat', 'groq', 'free_cloud', 'qwen_local', 'openai_compat', 'auto'
     llm_api_key: str | None
+    llm_endpoint: str | None
+    llm_model: str | None
     use_llm: bool | None
 
     # Маршрутизация
