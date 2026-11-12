@@ -1,0 +1,54 @@
+# Веб-краулер. Ничего не качается, пока для источника не стоят
+# enabled: true И tos_checked: true (вы прочитали условия использования сайта).
+# Идентификаторы соответствуют id в sources.yaml.
+# Шаблоны allow/seeds подберите после просмотра структуры сайта.
+user_agent: "pathrag-internal-bot/0.1 (contact: CHANGE_ME@example.com)"
+delay_seconds: 2.0
+
+sources:
+  pathologyoutlines:
+    enabled: false
+    tos_checked: false
+    seeds: ["https://www.pathologyoutlines.com/"]
+    allow: ['^https://www\.pathologyoutlines\.com/']
+    deny: ['/search', '/login', '\?']
+    max_pages: 50
+    language: en
+
+  molecular_neuropathology:
+    enabled: false
+    tos_checked: false
+    seeds: ["https://www.molecularneuropathology.org/"]
+    allow: ['^https://www\.molecularneuropathology\.org/']
+    deny: []
+    max_pages: 50
+    language: en
+
+  # ---- Атласы изображений (python scripts/ingest.py images web --source ID) ----
+  # images.enabled включает извлечение картинок; save_thumbnails: false = миниатюры нужны только для
+  # эмбеддинга и удаляются, в индексе остаётся ссылка на оригинал.
+  # Структуру сайтов я не проверял: после --dry-run посмотрите подписи и поправьте seeds/allow/deny.
+  webpath_utah:
+    enabled: false
+    tos_checked: false
+    seeds: ["https://webpath.med.utah.edu/"]
+    allow: ['^https://webpath\.med\.utah\.edu/']
+    deny: []
+    max_pages: 100
+    language: en
+    images: {enabled: true, save_thumbnails: false, max_per_page: 20}
+
+  hist_ysmu_gp:
+    enabled: false
+    tos_checked: false
+    seeds: ["https://hist.ysmu.ru/gp/index.html"]
+    allow: ['^https://hist\.ysmu\.ru/gp/']
+    deny: []
+    max_pages: 100
+    language: ru
+    images: {enabled: true, save_thumbnails: false, max_per_page: 20}
+
+  # path_anatomy_ru и edu_geotar_ru: интерактивные вьюеры (JS), обычный HTML-краулер, скорее всего, не подойдёт.
+  # Для них вручную составьте CSV со ссылками: images wsi-links --csv ...
+
+  # who_tumour_classification: по умолчанию не включаем, часть контента платная/за логином.
