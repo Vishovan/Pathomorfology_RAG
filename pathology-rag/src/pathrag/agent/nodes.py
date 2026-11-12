@@ -98,47 +98,76 @@ def literature_search_node(state: AgentState) -> dict[str, Any]:
 
 
 def generate_answer_node(state: AgentState) -> dict[str, Any]:
-    """Узел синтеза итогового структурированного ответа с цитатами."""
+    """Узел синтеза итогового структурированного ответа с цитатами через LLM или экспертную базу."""
     intent = state.get("intent", "pathology_qa")
     query = state.get("query", "")
     citations = []
+
+    llm_provider = state.get("llm_provider") or "auto"
+    llm_key = state.get("llm_api_key")
+    llm_endpoint = state.get("llm_endpoint")
+    llm_model = state.get("llm_model")
 
     # 1. Формирование юридического ответа
     if intent == "legal_gost":
         legal_res = state.get("legal_results", [])
         boundary = state.get("legal_boundary", get_medical_device_boundary_info())
 
-        lines = [
-            "### ⚖️ Консультация по ГОСТам и регуляторике ПО в сфере здравоохранения\n",
-            f"**Запрос:** {query}\n",
-        ]
+        for item in legal_res[:5]:
+            citations.append({"source": item.get("gost", "ГОСТ"), "title": item.get("title", ""), "reference": "Каталог Росстандарта"})
 
-        if "медиздели" in query.lower() or "samd" in query.lower() or "роспатент" in query.lower() or "минцифры" in query.lower() or "росздравнадзор" in query.lower():
-            lines.append("#### 1. Разграничение трех самостоятельных процедур регистрации:\n")
-            lines.append("| Направление | Государственный орган | Итоговый результат |")
-            lines.append("| :--- | :--- | :--- |")
-            lines.append("| **Регистрация программы для ЭВМ** | Роспатент (ФИПС) | Свидетельство о госрегистрации ЭВМ, защита кода и авторства |")
-            lines.append("| **Включение в Реестр отечественного ПО** | Минцифры России | Освобождение от НДС, допуск к госзакупкам по 44-ФЗ/223-ФЗ |")
-            lines.append("| **Регистрация в качестве медизделия (SaMD)** | Росздравнадзор | Регистрационное удостоверение (РУ) на медицинское изделие |\n")
-            lines.append("> [!IMPORTANT]\n> **Принципиальное отличие:** регистрация в Роспатенте не заменяет реестр Минцифры, а включение в реестр Минцифры НЕ означает допуск системы как медицинского изделия.\n")
+        # Попытка генерации через LLM
+        legal_context = "\n".join([
+            f"Стандарт/Процедура: {s.get('gost')} - {s.get('title')}\nСуть: {s.get('summary')}\nПрактическое применение: {s.get('practical_value')}"
+            for s in legal_res[:6]
+        ])
+        legal_prompt = (
+            f"Вопрос пользователя:\n{query}\n\n"
+            f"Нормативная база (ГОСТы, процедуры Роспатента, Минцифры, Росздравнадзора):\n{legal_context}\n\n"
+            f"Стратегия квалификации Non-SaMD:\n{boundary.get('pathology_rag_strategy', '')}\n\n"
+            f"Сформируйте подробный, юридически безупречный ответ по российским стандартам ГОСТ и процедурам регистрации. "
+            f"Объясните различия между Роспатентом, Минцифры и Росздравнадзором (медизделием), и как правильно составить ТЗ."
+        )
 
-            lines.append("#### 2. Квалификация Pathology RAG: как избежать статуса медизделия?\n")
-            lines.append(f"**Стратегия для ТЗ:** {boundary.get('pathology_rag_strategy', '')}\n")
-            lines.append("- **Критерии НЕ отнесения к SaMD:** система не анализирует персональные снимки пациентов, не формулирует клинический диагноз и предназначена для академическо-справочных целей врачей и студентов.")
+        llm_response = generate_with_llm(
+            legal_prompt,
+            system_prompt="Вы — ведущий юрисконсульт по стандартам ГОСТ и регуляторике медицинского программного обеспечения в Российской Федерации.",
+            provider=llm_provider,
+            api_key=llm_key,
+            endpoint_url=llm_endpoint,
+            model_name=llm_model,
+        )
 
-        if legal_res:
-            lines.append("\n#### 3. Применимые стандарты ГОСТ:\n")
-            for item in legal_res[:5]:
-                gost_name = item.get("gost", "ГОСТ")
-                title = item.get("title", "")
-                summary = item.get("summary", "")
-                practical = item.get("practical_value", "")
-                lines.append(f"##### 📌 {gost_name}: {title}")
-                lines.append(f"- **Назначение:** {summary}")
-                lines.append(f"- **Практическое применение в проекте:** {practical}\n")
-                citations.append({"source": gost_name, "title": title, "reference": "Каталог Росстандарта"})
+        if llm_response:
+            answer_text = llm_response
+        else:
+            # Детерминированный структурированный синтез
+            lines = [
+                "### ⚖️ Консультация по ГОСТам и регуляторике ПО в сфере здравоохранения\n",
+                f"**Запрос:** {query}\n",
+            ]
 
-        answer_text = "\n".join(lines)
+            if any(w in query.lower() for w in ["медиздели", "samd", "роспатент", "минцифры", "росздравнадзор", "процедур"]):
+                lines.append("#### 1. Разграничение трех самостоятельных процедур регистрации:\n")
+                lines.append("| Направление | Государственный орган | Итоговый результат |")
+                lines.append("| :--- | :--- | :--- |")
+                lines.append("| **Регистрация программы для ЭВМ** | Роспатент (ФИПС) | Свидетельство о госрегистрации ЭВМ, защита кода и авторства |")
+                lines.append("| **Включение в Реестр отечественного ПО** | Минцифры России | Освобождение от НДС, допуск к госзакупкам по 44-ФЗ/223-ФЗ |")
+                lines.append("| **Регистрация в качестве медизделия (SaMD)** | Росздравнадзор | Регистрационное удостоверение (РУ) на медицинское изделие |\n")
+                lines.append("> [!IMPORTANT]\n> **Принципиальное отличие:** регистрация в Роспатенте не заменяет реестр Минцифры, а включение в реестр Минцифры НЕ означает допуск системы как медицинского изделия.\n")
+
+                lines.append("#### 2. Квалификация Pathology RAG: как избежать статуса медизделия?\n")
+                lines.append(f"**Стратегия для ТЗ:** {boundary.get('pathology_rag_strategy', '')}\n")
+                lines.append("- **Критерии НЕ отнесения к SaMD:** система не анализирует персональные снимки пациентов, не формулирует клинический диагноз и предназначена для академическо-справочных целей врачей и студентов.")
+
+            if legal_res:
+                lines.append("\n#### 3. Применимые стандарты ГОСТ:\n")
+                for item in legal_res[:5]:
+                    lines.append(f"##### 📌 {item.get('gost')}: {item.get('title')}")
+                    lines.append(f"- **Назначение:** {item.get('summary')}")
+                    lines.append(f"- **Практическое применение в проекте:** {item.get('practical_value')}\n")
+
+            answer_text = "\n".join(lines)
         disclaimer = LEGAL_DISCLAIMER
 
     # 2. Формирование ответа по поиску изображений
@@ -150,7 +179,7 @@ def generate_answer_node(state: AgentState) -> dict[str, Any]:
         ]
 
         if not images:
-            lines.append("К сожалению, по данному запросу не найдено подходящих микропрепаратов в базе данных.")
+            lines.append("По данному запросу не найдено подходящих микропрепаратов в базе данных.")
         else:
             for i, img in enumerate(images, 1):
                 title = img.get("title", "Микропрепарат")
@@ -160,7 +189,7 @@ def generate_answer_node(state: AgentState) -> dict[str, Any]:
                 mag = img.get("magnification", "")
                 cap = img.get("caption", "")
                 src_name = img.get("source_name") or img.get("source_id", "")
-                wsi_url = img.get("wsi_url") or img.get("page_url", "")
+                wsi_url = img.get("wsi_url") or img.get("image_url", "")
 
                 lines.append(f"#### #{i} {title}")
                 lines.append(f"- **Орган / ткань:** {organ}")
@@ -183,53 +212,73 @@ def generate_answer_node(state: AgentState) -> dict[str, Any]:
         lit = state.get("literature_results", [])
         web = state.get("web_results", [])
 
-        lines = [
-            "### 🔬 Патоморфологический справочник\n",
-        ]
+        # Формируем список цитат
+        for doc in docs[:4]:
+            citations.append({"source": doc.get("source", ""), "title": doc.get("title", ""), "reference": doc.get("page_reference", "")})
 
-        if docs:
-            for doc in docs[:3]:
-                title = doc.get("title", "")
-                text = doc.get("text", "")
-                src = doc.get("source", "")
-                page = doc.get("page_reference", "")
+        # Попытка вызова LLM
+        context_parts = []
+        for d in docs[:4]:
+            context_parts.append(f"Документ: {d.get('title')}\nИсточник: {d.get('source')} ({d.get('page_reference')})\nСодержание:\n{d.get('text')}")
+        clinical_context = "\n\n---\n\n".join(context_parts)
 
-                lines.append(f"#### 📖 {title}\n")
-                lines.append(f"{text}\n")
-                lines.append(f"> *Источник цитирования: [{src}, {page}]*\n")
-                citations.append({"source": src, "title": title, "reference": page})
+        clinical_prompt = (
+            f"Вопрос пользователя:\n{query}\n\n"
+            f"Клинический и патоморфологический контекст из верифицированных руководств:\n{clinical_context}\n\n"
+            f"Сформулируйте развернутый, профессиональный ответ врача-патологоанатома. "
+            f"Выделите ключевые диагностические критерии, процентные пороги, шкалы оценки и правила дифференциальной диагностики. "
+            f"Обязательно сошлитесь на клинические рекомендации и стандарты из контекста."
+        )
+
+        llm_response = generate_with_llm(
+            clinical_prompt,
+            system_prompt="Вы — ведущий врач-патологоанатом, эксперт по цифровой патоморфологии и иммуногистохимии.",
+            provider=llm_provider,
+            api_key=llm_key,
+            endpoint_url=llm_endpoint,
+            model_name=llm_model,
+        )
+
+        if llm_response:
+            answer_text = llm_response
         else:
-            lines.append("В локальной базе знаний точных фрагментов не обнаружено. Выполнен поиск по открытым научным источникам.\n")
+            # Высокоструктурированный экспертный клинический синтез
+            lines = [
+                "### 🔬 Клинико-морфологическое экспертное заключение\n",
+                f"**Клинический запрос:** {query}\n",
+            ]
+            if docs:
+                lines.append("#### 1. Диагностические критерии и пороговые значения\n")
+                for doc in docs[:3]:
+                    title = doc.get("title", "")
+                    text = doc.get("text", "")
+                    src = doc.get("source", "")
+                    ref = doc.get("page_reference", "")
+                    lines.append(f"**{title}**:")
+                    lines.append(f"{text}\n")
+                    lines.append(f"> *Источник: {src} ({ref})*\n")
 
-        # Добавление связанных микрофотографий
-        if images:
-            lines.append("\n#### 📸 Иллюстративный материал (Микропрепараты):\n")
-            for img in images[:2]:
-                title = img.get("title", "")
-                stain = img.get("stain", "")
-                mag = img.get("magnification", "")
-                cap = img.get("caption", "")
-                wsi_url = img.get("wsi_url", "")
-                src = img.get("source_name", "")
-                lines.append(f"- **{title}** (`{stain}`, `{mag}`): {cap}")
-                if wsi_url:
-                    lines.append(f"  👉 [Смотреть WSI-слайд]({wsi_url}) ({src})")
-            lines.append("")
+                lines.append("#### 2. Рекомендации по дифференциальной диагностике и рефлекс-тестированию")
+                if "her2" in query.lower():
+                    lines.append("- При получении неопределенного статуса **HER2 2+** обязательным этапом является подтверждающая **FISH/SISH гибридизация** in situ.")
+                    lines.append("- Опухоли со статусом **HER2 1+** или **HER2 2+ / FISH-** классифицируются как **HER2-low** с возможностью назначения современных конъюгатов (T-DXd).")
+                elif "ki-67" in query.lower() or "люминальн" in query.lower():
+                    lines.append("- Подсчет индекса **Ki-67** выполняется стандартизированным методом в «горячих точках» (hot spots) с оценкой не менее 500-1000 опухолевых клеток.")
+                    lines.append("- Значение **< 14-20%** свидетельствует о Люминальном А подтипе, значение **≥ 20%** указывает на Люминальный В подтип с высокой пролиферативной активностью.")
+                else:
+                    lines.append("- Окончательная верификация требует сопоставления гистологической картины (окраска гематоксилином и эозином) с панелью специфических ИГХ-маркеров и клинико-инструментальными данными.")
+            else:
+                lines.append("В локальной базе знаний точных фрагментов не обнаружено. Выполнен поиск по открытым научным источникам.\n")
 
-        # Добавление внешней литературы при необходимости
-        if lit or web:
-            lines.append("\n#### 📚 Дополнительные научные публикации и ссылки:")
-            for item in lit[:3]:
-                title = item.get("title", "")
-                url = item.get("url", "")
-                stype = item.get("source_type", "")
-                lines.append(f"- [{title}]({url}) — *{stype}*")
-            for item in web[:2]:
-                title = item.get("title", "")
-                url = item.get("url", "")
-                lines.append(f"- [{title}]({url}) — *Веб-источник*")
+            if lit or web:
+                lines.append("\n#### 3. Научные публикации и внешние источники:")
+                for item in lit[:3]:
+                    lines.append(f"- [{item.get('title')}]({item.get('url')}) — *{item.get('source_type')}*")
+                for item in web[:2]:
+                    lines.append(f"- [{item.get('title')}]({item.get('url')}) — *Веб-источник*")
 
-        answer_text = "\n".join(lines)
+            answer_text = "\n".join(lines)
+
         disclaimer = MED_DISCLAIMER
 
     return {
