@@ -1,5 +1,6 @@
 """Эмбеддинги (bge-m3) и запись узлов в Qdrant через LlamaIndex."""
 import logging
+import time
 import uuid
 from functools import lru_cache
 
@@ -102,3 +103,23 @@ def collection_count() -> int | None:
         return get_client().count(SETTINGS.collection, exact=True).count
     except Exception:
         return None
+
+
+_READY_TTL_SEC = 60.0
+_ready_cache: dict[str, tuple[float, bool]] = {}
+
+
+def qdrant_collection_ready(collection: str) -> bool:
+    """Есть ли непустая коллекция в Qdrant. Результат кэшируется на минуту,
+    чтобы при выключенном Qdrant не тратить таймаут и не грузить модель эмбеддингов на каждый запрос."""
+    now = time.monotonic()
+    cached = _ready_cache.get(collection)
+    if cached and now - cached[0] < _READY_TTL_SEC:
+        return cached[1]
+    try:
+        ready = get_client().count(collection, exact=False).count > 0
+    except Exception as e:
+        log.debug("Qdrant collection %s unavailable: %s", collection, e)
+        ready = False
+    _ready_cache[collection] = (now, ready)
+    return ready

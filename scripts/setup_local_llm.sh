@@ -4,7 +4,8 @@
 #   macOS (Apple Silicon)  -> Ollama (t-tech/T-pro-it-2.1:q4_K_M)
 #   Linux + NVIDIA GPU     -> vLLM   (t-tech/T-pro-it-2.1 или t-tech/T-lite-it-1.0)
 #
-# Эндпоинт пишется в /tmp/vllm_endpoint.txt — streamlit_app.py подхватывает его автоматически.
+# Ollama на :11434 приложение находит само. Для vLLM или другого адреса экспортируйте
+# VLLM_ENDPOINT и TBANK_MODEL (команда печатается в конце); адрес также пишется в /tmp/vllm_endpoint.txt.
 set -euo pipefail
 
 ENDPOINT_FILE="/tmp/vllm_endpoint.txt"
@@ -38,3 +39,4 @@ fi
 wait_ready "$BASE"
 echo "$BASE" > "$ENDPOINT_FILE"
 echo "OK: $MODEL -> $BASE (записано в $ENDPOINT_FILE)"
+echo "Для приложения: export VLLM_ENDPOINT=$BASE TBANK_MODEL=$MODEL"

@@ -6,10 +6,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from pathrag.agent import ask_agent
 
@@ -31,21 +31,22 @@ class ChatResponse(BaseModel):
     intent: str
     citations: list[dict]
     disclaimer: str
-    images: list[dict] = []
-    literature: list[dict] = []
+    images: list[dict] = Field(default_factory=list)
+    literature: list[dict] = Field(default_factory=list)
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index():
+def index():
     html_path = ROOT / "ui" / "templates" / "index.html"
     if html_path.exists():
-        with open(html_path, "r", encoding="utf-8") as f:
-            return f.read()
+        return html_path.read_text(encoding="utf-8")
     return "<h1>Pathology RAG Web Interface</h1>"
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat_endpoint(req: ChatRequest):
+def chat_endpoint(req: ChatRequest):
+    # Обычный def: FastAPI выполнит блокирующий вызов агента (LLM, HTTP) в пуле потоков,
+    # не останавливая event loop для остальных запросов.
     result = ask_agent(req.message, mode=req.mode)
     return ChatResponse(
         answer=result.get("final_answer", ""),

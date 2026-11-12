@@ -127,6 +127,8 @@ source .venv/bin/activate
 
 # Установка зависимостей
 pip install -r requirements.txt
+# или как пакет (с нужными extras: index, ui, gigachat, dev)
+pip install -e ".[ui,dev]"
 ```
 
 ### 2. Запуск интерактивного Веб-интерфейса
@@ -141,6 +143,11 @@ python scripts/run_ui.py --port 8000
 - Карточки микропрепаратов с кнопкой перехода в цифровой WSI-просмотрщик;
 - Ссылки на цитируемые источники и нормативные документы.
 
+Streamlit-версия (та же, что на share.streamlit.io):
+```bash
+streamlit run streamlit_app.py
+```
+
 ### 3. Запуск терминального чата (CLI)
 
 ```bash
@@ -152,8 +159,10 @@ python scripts/agent_chat.py --mode legal
 ### 4. Запуск тестов и бенчмарка
 
 ```bash
-# Запуск юнит-тестов (22 теста)
-pytest tests/
+# Юнит-тесты (по умолчанию изолированы от сети; живые тесты помечены @pytest.mark.network)
+pytest
+# Линтер
+ruff check .
 
 # Запуск бенчмарка качества ответов агента
 python scripts/eval_benchmark.py

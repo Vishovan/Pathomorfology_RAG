@@ -172,11 +172,14 @@ def main() -> None:
     only = set(args.only or ["ru", "en", "epmc"])
     with httpx.Client(headers=UA, timeout=60, follow_redirects=True) as client:
         if "ru" in only:
-            print("Wikipedia RU…", flush=True); write("wikipedia_ru", fetch_wiki(client, "ru", WIKI_RU))
+            print("Wikipedia RU…", flush=True)
+            write("wikipedia_ru", fetch_wiki(client, "ru", WIKI_RU))
         if "en" in only:
-            print("Wikipedia EN…", flush=True); write("wikipedia_en", fetch_wiki(client, "en", WIKI_EN))
+            print("Wikipedia EN…", flush=True)
+            write("wikipedia_en", fetch_wiki(client, "en", WIKI_EN))
         if "epmc" in only:
-            print("Europe PMC (CC BY)…", flush=True); write("europepmc_ccby", fetch_epmc(client, args.max_epmc))
+            print("Europe PMC (CC BY)…", flush=True)
+            write("europepmc_ccby", fetch_epmc(client, args.max_epmc))
 
 
 if __name__ == "__main__":

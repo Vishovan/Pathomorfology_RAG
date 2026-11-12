@@ -1,8 +1,6 @@
 """Коллекция изображений в Qdrant: вектор подписи (bge-m3) + необязательный вектор изображения (PLIP)."""
 import logging
-import re
 from functools import lru_cache
-from pathlib import Path
 
 from .config import ROOT, SETTINGS
 from .index import get_client, get_embed_model
@@ -43,7 +41,7 @@ def embed_images(paths: list[str]) -> list[list[float] | None]:
         with torch.no_grad():
             f = _as_tensor(model.get_image_features(**inputs))
             f = f / f.norm(dim=-1, keepdim=True)
-        for (i, _), v in zip(batch, f.cpu().tolist()):
+        for (i, _), v in zip(batch, f.cpu().tolist(), strict=True):
             out[i] = v
     return out
 
@@ -114,7 +112,7 @@ def upsert_images(records: list[dict], doc_id: str, keep_thumbs: bool = True) ->
     img_vecs = embed_images([r.get("thumb_path") or "" for r in records]) if image_channel_enabled() else [None] * len(records)
 
     points = []
-    for r, cv, iv in zip(records, cap_vecs, img_vecs):
+    for r, cv, iv in zip(records, cap_vecs, img_vecs, strict=True):
         vec = {"caption": cv}
         if iv is not None:
             vec["image"] = iv

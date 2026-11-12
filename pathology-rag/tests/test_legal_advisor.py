@@ -1,9 +1,3 @@
-import sys
-from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
-
 from pathrag.retrieval.legal_kb import get_medical_device_boundary_info, search_gost_standards
 
 

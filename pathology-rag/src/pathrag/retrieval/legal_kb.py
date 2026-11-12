@@ -1,22 +1,28 @@
 """Юридическая и нормативная база по ГОСТам и регуляторике медицинского ПО в РФ."""
+import copy
 import json
-from pathlib import Path
+from functools import lru_cache
 from typing import Any
 
-KNOWLEDGE_DIR = Path(__file__).resolve().parents[1] / "knowledge"
+from ..config import KNOWLEDGE_DIR
 
 
-def load_legal_data() -> dict[str, Any]:
+@lru_cache(maxsize=1)
+def _legal_data() -> dict[str, Any]:
     file_path = KNOWLEDGE_DIR / "gost_legal.json"
     if not file_path.exists():
         return {}
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return json.loads(file_path.read_text(encoding="utf-8"))
+
+
+def load_legal_data() -> dict[str, Any]:
+    """Нормативная база (кэшируется в памяти; возвращается копия, чтобы вызывающий код не испортил кэш)."""
+    return copy.deepcopy(_legal_data())
 
 
 def search_gost_standards(query: str) -> list[dict[str, Any]]:
     """Поиск по стандартам ГОСТ и нормативным процедурам."""
-    data = load_legal_data()
+    data = _legal_data()  # только чтение: результаты собираются в новые словари
     q = query.lower()
     results = []
 
@@ -98,5 +104,4 @@ def search_gost_standards(query: str) -> list[dict[str, Any]]:
 
 def get_medical_device_boundary_info() -> dict[str, Any]:
     """Возвращает правила разграничения справочной системы и медицинского изделия."""
-    data = load_legal_data()
-    return data.get("medical_device_boundary", {})
+    return copy.deepcopy(_legal_data().get("medical_device_boundary", {}))
