@@ -145,7 +145,7 @@ def generate_with_llm(
                 "temperature": 0.2,
                 "max_tokens": 1800,
             }
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=float(os.getenv("LLM_TIMEOUT", "180"))) as client:
                 url = f"{target_endpoint.rstrip('/')}/chat/completions"
                 res = client.post(url, json=payload, headers=headers)
                 if res.status_code == 200:

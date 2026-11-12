@@ -48,195 +48,187 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
     :root {
-        --bg-dark: #0A0D14;
-        --card-bg: #111622;
-        --sidebar-bg: #0D111A;
-        --border-subtle: rgba(255, 255, 255, 0.08);
-        --border-hover: rgba(59, 130, 246, 0.4);
-        --accent-blue: #3B82F6;
-        --accent-blue-glow: rgba(59, 130, 246, 0.25);
-        --text-primary: #F8FAFC;
-        --text-secondary: #94A3B8;
-        --text-muted: #64748B;
+        --bg: #07090F;
+        --surface: rgba(17, 22, 34, 0.62);
+        --surface-solid: #0E131E;
+        --border: rgba(255, 255, 255, 0.07);
+        --border-strong: rgba(255, 255, 255, 0.14);
+        --accent: #7C9CFF;
+        --accent-2: #B490FF;
+        --accent-glow: rgba(124, 156, 255, 0.28);
+        --text: #EEF2F8;
+        --text-2: #9AA6B8;
+        --text-3: #5F6B7E;
+        --radius: 14px;
+        --ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     html, body, [class*="css"], .stApp {
-        background-color: var(--bg-dark) !important;
-        color: var(--text-primary) !important;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        color: var(--text) !important;
+        -webkit-font-smoothing: antialiased;
+    }
+    /* Фон: глубокий графит + мягкое «северное сияние» */
+    .stApp {
+        background:
+            radial-gradient(1100px 520px at 12% -8%, rgba(124, 156, 255, 0.13), transparent 60%),
+            radial-gradient(900px 480px at 100% 0%, rgba(180, 144, 255, 0.10), transparent 55%),
+            radial-gradient(800px 600px at 50% 120%, rgba(45, 212, 191, 0.06), transparent 60%),
+            var(--bg) !important;
+        background-attachment: fixed !important;
     }
 
-    /* Убираем лишние верхние и нижние отступы Streamlit */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+    #MainMenu, footer {visibility: hidden;}
     header[data-testid="stHeader"] {background: transparent;}
-    .block-container {
-        padding-top: 1.8rem;
-        padding-bottom: 2.5rem;
-        max-width: 1140px;
-    }
+    .block-container {padding-top: 2rem; padding-bottom: 6rem; max-width: 1080px;}
 
-    /* Боковая панель в темном стиле */
+    /* Сайдбар — матовое стекло */
     section[data-testid="stSidebar"] {
-        background-color: var(--sidebar-bg) !important;
-        border-right: 1px solid var(--border-subtle) !important;
+        background: rgba(10, 13, 21, 0.78) !important;
+        backdrop-filter: blur(18px) saturate(140%);
+        border-right: 1px solid var(--border) !important;
     }
+    section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4 {
+        font-size: 0.72rem !important; text-transform: uppercase; letter-spacing: 0.12em;
+        color: var(--text-3) !important; font-weight: 600 !important;
+    }
+    hr {border-color: var(--border) !important;}
 
-    /* Верхний блок заголовка */
-    .hero-header {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        border-bottom: 1px solid var(--border-subtle);
-        padding-bottom: 1rem;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
-        gap: 0.75rem;
+    /* Hero */
+    .hero {
+        position: relative; padding: 28px 30px; margin-bottom: 22px;
+        border: 1px solid var(--border); border-radius: 20px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));
+        overflow: hidden; animation: rise 0.7s var(--ease) both;
     }
+    .hero::before {
+        content: ""; position: absolute; inset: -1px; border-radius: 20px; padding: 1px;
+        background: linear-gradient(120deg, rgba(124,156,255,0.55), transparent 35%, transparent 65%, rgba(180,144,255,0.45));
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+    .hero-eyebrow {
+        font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.14em;
+        text-transform: uppercase; color: var(--accent); margin: 0 0 10px 0;
+        display: inline-flex; align-items: center; gap: 8px;
+    }
+    .pulse-dot {width: 7px; height: 7px; border-radius: 50%; background: #34D399;
+        box-shadow: 0 0 0 0 rgba(52,211,153,0.6); animation: pulse 2.2s infinite;}
     .hero-title {
-        font-size: 1.85rem;
-        font-weight: 700;
-        letter-spacing: -0.03em;
-        background: linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin: 0;
+        font-size: clamp(1.9rem, 3.6vw, 2.7rem); font-weight: 700; letter-spacing: -0.035em; line-height: 1.08;
+        margin: 0; background: linear-gradient(135deg, #FFFFFF 0%, #C9D4FF 55%, #B490FF 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .hero-subtitle {
-        margin: 4px 0 0 0;
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-    }
+    .hero-subtitle {margin: 10px 0 0 0; color: var(--text-2); font-size: 0.95rem; max-width: 640px; line-height: 1.5;}
+    .hero-stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 22px;}
+    .stat {padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.02);}
+    .stat b {display: block; font-size: 1.15rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em;}
+    .stat span {font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em;}
 
-    /* Бейджи с неоновым свечением */
-    .hero-badges {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-    .badge-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 3px 10px;
-        border-radius: 9999px;
-        font-size: 0.73rem;
-        font-weight: 500;
-        letter-spacing: 0.02em;
-    }
-    .badge-emerald {
-        background: rgba(16, 185, 129, 0.1);
-        color: #34D399;
-        border: 1px solid rgba(16, 185, 129, 0.25);
-    }
-    .badge-blue {
-        background: rgba(59, 130, 246, 0.1);
-        color: #60A5FA;
-        border: 1px solid rgba(59, 130, 246, 0.25);
-    }
-    .badge-purple {
-        background: rgba(168, 85, 247, 0.1);
-        color: #C084FC;
-        border: 1px solid rgba(168, 85, 247, 0.25);
-    }
+    /* Чипы */
+    .hero-badges {display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;}
+    .badge-chip {display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 500; letter-spacing: 0.02em; border: 1px solid var(--border-strong);
+        background: rgba(255,255,255,0.03); color: var(--text-2);}
+    .badge-emerald {color: #6EE7B7; border-color: rgba(52,211,153,0.28); background: rgba(52,211,153,0.07);}
+    .badge-blue {color: #A5B8FF; border-color: rgba(124,156,255,0.3); background: rgba(124,156,255,0.08);}
+    .badge-purple {color: #CDB4FF; border-color: rgba(180,144,255,0.3); background: rgba(180,144,255,0.08);}
 
-    /* Кнопки быстрых сценариев */
+    /* Кнопки-сценарии: адаптивная сетка карточек */
+    div[data-testid="stHorizontalBlock"] {gap: 10px !important; flex-wrap: wrap;}
+    div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
+    div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {min-width: 200px; flex: 1 1 200px !important;}
     .stButton > button {
-        border-radius: 10px;
-        font-size: 0.83rem;
-        font-weight: 500;
-        border: 1px solid var(--border-subtle);
-        background: var(--card-bg);
-        color: #E2E8F0;
-        padding: 10px 14px;
-        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        width: 100%;
-        text-align: left;
+        width: 100%; min-height: 54px; text-align: left; justify-content: flex-start;
+        border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface);
+        backdrop-filter: blur(10px); color: var(--text); font-size: 0.84rem; font-weight: 500; padding: 12px 16px;
+        transition: transform 0.35s var(--ease), border-color 0.35s var(--ease), box-shadow 0.35s var(--ease), background 0.35s var(--ease);
+        animation: rise 0.6s var(--ease) both;
     }
     .stButton > button:hover {
-        border-color: var(--accent-blue);
-        color: #FFFFFF;
-        background: #172033;
-        box-shadow: 0 0 16px var(--accent-blue-glow);
-        transform: translateY(-1px);
+        transform: translateY(-2px); border-color: rgba(124,156,255,0.45);
+        background: rgba(124,156,255,0.07); box-shadow: 0 10px 30px -12px var(--accent-glow); color: #fff;
+    }
+    .stButton > button:active {transform: translateY(0) scale(0.99);}
+    .stButton > button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+        outline: 2px solid var(--accent) !important; outline-offset: 2px;
     }
 
-    /* Карточки гистологических снимков в темном оформлении */
-    .micro-card-dark {
-        background: var(--card-bg);
-        border: 1px solid var(--border-subtle);
-        border-radius: 12px;
-        padding: 14px 16px;
-        margin-top: 10px;
-        margin-bottom: 14px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    /* Поля ввода */
+    div[data-baseweb="select"] > div, .stTextInput input, .stTextArea textarea {
+        background: rgba(255,255,255,0.03) !important; border: 1px solid var(--border) !important;
+        border-radius: 10px !important; color: var(--text) !important; transition: border-color 0.25s var(--ease);
     }
-    .card-meta-bar {
-        display: flex;
-        gap: 6px;
-        margin: 8px 0 10px 0;
-        flex-wrap: wrap;
-    }
-    .meta-tag-dark {
-        background: rgba(255, 255, 255, 0.05);
-        color: #94A3B8;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        font-size: 0.72rem;
-        padding: 2px 8px;
-        border-radius: 6px;
-        font-weight: 500;
-    }
-    .wsi-action-btn-dark {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
-        color: #FFFFFF !important;
-        text-decoration: none;
-        padding: 7px 14px;
-        border-radius: 8px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        margin-top: 10px;
-        box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
-        transition: all 0.15s ease-in-out;
-    }
-    .wsi-action-btn-dark:hover {
-        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
-        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.5);
-        transform: translateY(-1px);
-        text-decoration: none;
-    }
+    div[data-baseweb="select"] > div:hover, .stTextInput input:hover {border-color: var(--border-strong) !important;}
 
-    /* Дисклеймер Non-SaMD в темной теме */
-    .regulatory-notice-dark {
-        background: rgba(245, 158, 11, 0.06);
-        border: 1px solid rgba(245, 158, 11, 0.2);
-        border-left: 3px solid #F59E0B;
-        padding: 10px 14px;
-        border-radius: 8px;
-        font-size: 0.78rem;
-        color: #FCD34D;
-        line-height: 1.45;
-        margin-top: 14px;
-    }
-
-    /* Стилизация сообщений чата */
+    /* Чат */
     div[data-testid="stChatMessage"] {
-        background-color: transparent !important;
-        padding: 0.8rem 0;
+        background: transparent !important; padding: 1rem 0.25rem; animation: rise 0.5s var(--ease) both;
+        border-bottom: 1px solid rgba(255,255,255,0.035);
     }
-    div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) {
-        background-color: rgba(255, 255, 255, 0.02) !important;
-        border-radius: 12px;
-        padding: 1rem;
-        border: 1px solid rgba(255, 255, 255, 0.04);
+    div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]),
+    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
+        background: rgba(124,156,255,0.045) !important; border: 1px solid rgba(124,156,255,0.12);
+        border-radius: var(--radius); padding: 1rem 1.1rem;
     }
+    div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li {line-height: 1.65; color: #DCE3EE;}
+    div[data-testid="stChatMessage"] strong {color: #fff;}
+    div[data-testid="stChatInput"], div[data-testid="stBottomBlockContainer"] {background: transparent !important;}
+    div[data-testid="stChatInput"] > div {
+        background: rgba(14,19,30,0.85) !important; backdrop-filter: blur(16px);
+        border: 1px solid var(--border-strong) !important; border-radius: 16px !important;
+        box-shadow: 0 20px 50px -20px rgba(0,0,0,0.8), 0 0 0 1px rgba(124,156,255,0.05);
+        transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+    }
+    div[data-testid="stChatInput"] > div:focus-within {border-color: rgba(124,156,255,0.5) !important;
+        box-shadow: 0 20px 50px -20px rgba(0,0,0,0.8), 0 0 0 4px rgba(124,156,255,0.12);}
+
+    /* Экспандеры (источники) */
+    div[data-testid="stExpander"] details {
+        border: 1px solid var(--border) !important; border-radius: 12px !important; background: rgba(255,255,255,0.015);
+    }
+    div[data-testid="stExpander"] summary:hover {color: var(--accent);}
+
+    /* Карточки микропрепаратов */
+    div[data-testid="stImage"] img {border-radius: 12px; border: 1px solid var(--border);
+        transition: transform 0.5s var(--ease); }
+    div[data-testid="stImage"] img:hover {transform: scale(1.015);}
+    .micro-card-dark {background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 14px 16px; margin: 10px 0 14px 0; backdrop-filter: blur(10px);
+        transition: border-color 0.3s var(--ease), transform 0.3s var(--ease);}
+    .micro-card-dark:hover {border-color: var(--border-strong); transform: translateY(-1px);}
+    .card-meta-bar {display: flex; gap: 6px; margin: 8px 0 10px 0; flex-wrap: wrap;}
+    .meta-tag-dark {background: rgba(255,255,255,0.04); color: var(--text-2); border: 1px solid var(--border);
+        font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; font-family: 'JetBrains Mono', monospace;}
+    .wsi-action-btn-dark {display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+        background: linear-gradient(135deg, #6D8BFF, #9C7BFF); color: #fff !important; text-decoration: none;
+        padding: 7px 14px; border-radius: 9px; font-size: 0.78rem; font-weight: 600;
+        box-shadow: 0 8px 24px -10px rgba(124,156,255,0.7); transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);}
+    .wsi-action-btn-dark:hover {transform: translateY(-1px); box-shadow: 0 12px 30px -10px rgba(124,156,255,0.9); text-decoration: none;}
+
+    /* Источники */
+    .cite {display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.83rem;}
+    .cite:last-child {border-bottom: none;}
+    .cite-n {flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
+        background: rgba(124,156,255,0.12); color: #A5B8FF; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace;}
+    .cite-src {color: var(--text); font-weight: 500;}
+    .cite-meta {color: var(--text-3); font-size: 0.74rem;}
+    .cite a {color: var(--accent) !important; text-decoration: none;}
+
+    .regulatory-notice-dark {background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.16);
+        border-left: 2px solid #F59E0B; padding: 10px 14px; border-radius: 10px; font-size: 0.76rem;
+        color: #F5D58A; line-height: 1.45; margin-top: 14px;}
+
+    .llm-status {display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-2);
+        padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,0.02);}
+
+    @keyframes rise {from {opacity: 0; transform: translateY(8px);} to {opacity: 1; transform: none;}}
+    @keyframes pulse {0% {box-shadow: 0 0 0 0 rgba(52,211,153,0.55);} 70% {box-shadow: 0 0 0 8px rgba(52,211,153,0);} 100% {box-shadow: 0 0 0 0 rgba(52,211,153,0);}}
+    @media (prefers-reduced-motion: reduce) {*, *::before, *::after {animation: none !important; transition: none !important;}}
+    @media (max-width: 640px) {.hero {padding: 20px;} .block-container {padding-top: 1rem;}}
     </style>
     """,
     unsafe_allow_html=True,
@@ -254,18 +246,40 @@ with st.sidebar:
     st.markdown("#### ⚙️ **Модель генерации (LLM)**")
 
     llm_options_map = {
-        "gigachat": "🟢 Сбер GigaChat Pro (152-ФЗ, РФ)",
-        "groq": "⚡ Groq Cloud (Qwen 2.5 / Llama 3.3)",
-        "free_cloud": "🌐 Free Cloud AI (Pollinations Qwen 2.5)",
-        "openai_compat": "🖥️ Корпоративный vLLM / Ollama / OpenAI",
-        "autonomous": "🔬 Автономный экспертный RAG-анализ",
+        "groq": "⚡ Llama 3.1 / 3.3 · Groq Cloud",
+        "openai_compat": "🦙 Llama 3.1 8B · свой сервер (vLLM / Ollama)",
+        "gigachat": "🟢 GigaChat Pro · Сбер (152-ФЗ)",
+        "free_cloud": "🌐 Free Cloud AI · без ключа",
+        "autonomous": "🔬 Без LLM · только RAG-синтез",
     }
 
+    def _secret(name: str) -> str:
+        try:
+            if name in st.secrets:
+                return str(st.secrets[name])
+        except Exception:
+            pass
+        return os.getenv(name, "")
+
+    # Эндпоинт своего сервера: Streamlit Secrets → env → файл от scripts/setup_local_llm.sh
+    _endpoint_file = Path("/tmp/vllm_endpoint.txt")
+    default_endpoint = _secret("VLLM_ENDPOINT") or (
+        _endpoint_file.read_text().strip() if _endpoint_file.exists() else ""
+    )
+    if _secret("GROQ_API_KEY"):
+        default_llm = "groq"
+    elif default_endpoint:
+        default_llm = "openai_compat"
+    elif _secret("GIGACHAT_CREDENTIALS"):
+        default_llm = "gigachat"
+    else:
+        default_llm = "free_cloud"
+
     selected_llm_key = st.selectbox(
-        "Выберите провайдера интеллекта:",
+        "Провайдер LLM",
         options=list(llm_options_map.keys()),
         format_func=lambda k: llm_options_map[k],
-        index=0,
+        index=list(llm_options_map.keys()).index(default_llm),
     )
 
     api_key_val = None
@@ -304,17 +318,27 @@ with st.sidebar:
         )
         custom_model_name = st.selectbox(
             "Модель на Groq:",
-            options=["llama-3.3-70b-versatile", "qwen-2.5-32b", "mixtral-8x7b-32768"],
+            options=["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
             index=0,
+            help="Обе модели под Llama Community License — коммерческое использование разрешено.",
         )
 
     elif selected_llm_key == "free_cloud":
         st.success("✨ Работает онлайн без API-ключей (Qwen 2.5 via Cloud Serverless).")
 
     elif selected_llm_key == "openai_compat":
-        custom_endpoint = st.text_input("Base URL:", value="http://localhost:11434/v1")
-        api_key_val = st.text_input("API Key / Token (если есть):", type="password")
-        custom_model_name = st.text_input("Model ID:", value="qwen2.5:14b-instruct")
+        custom_endpoint = st.text_input(
+            "Base URL (OpenAI-совместимый):",
+            value=default_endpoint or "http://localhost:11434/v1",
+            help="vLLM: http://<GPU-сервер>:8000/v1 · Ollama: http://localhost:11434/v1. "
+                 "Для Streamlit Cloud адрес должен быть доступен из интернета.",
+        )
+        api_key_val = st.text_input("API Key (если требуется):", type="password",
+                                    value=_secret("VLLM_API_KEY"))
+        custom_model_name = st.text_input(
+            "Model ID:", value=_secret("VLLM_MODEL") or "llama3.1:8b",
+            help="vLLM: meta-llama/Llama-3.1-8B-Instruct · Ollama: llama3.1:8b",
+        )
 
     elif selected_llm_key == "autonomous":
         st.info("📌 Работает на встроенной верифицированной базе знаний клинических руководств без внешних запросов.")
@@ -375,19 +399,36 @@ with st.sidebar:
 # -----------------------------------------------------------------------------
 # 3. Основная рабочая область
 # -----------------------------------------------------------------------------
+@st.cache_data(show_spinner=False)
+def _kb_stats() -> dict:
+    try:
+        from pathrag.retrieval.hybrid_retriever import _load_knowledge_corpus
+        docs = _load_knowledge_corpus()
+        return {"chunks": len(docs), "sources": len({d.get("source") for d in docs})}
+    except Exception:
+        return {"chunks": 0, "sources": 0}
+
+
+_stats = _kb_stats()
+_llm_label = llm_options_map[selected_llm_key].split("·")[0].strip(" ⚡🦙🟢🌐🔬")
 st.markdown(
-    """
-    <div class="hero-header">
-        <div>
-            <h1 class="hero-title">Pathology RAG</h1>
-            <p class="hero-subtitle">Мультимодальный ассистент по патоморфологии (РМЖ ИГХ, WSI) и стандартам ГОСТ</p>
+    f"""
+    <section class="hero" role="banner" aria-label="Pathology RAG">
+        <p class="hero-eyebrow"><span class="pulse-dot" aria-hidden="true"></span>Clinical &amp; Regulatory Copilot</p>
+        <h1 class="hero-title">Pathology RAG</h1>
+        <p class="hero-subtitle">Ассистент патоморфолога: общая и частная патология, ИГХ рака молочной железы,
+        микропрепараты и WSI, нормативная база ГОСТ. Каждый ответ — со ссылками на источники.</p>
+        <div class="hero-stats" role="list">
+            <div class="stat" role="listitem"><b>{_stats["chunks"]}</b><span>фрагментов знаний</span></div>
+            <div class="stat" role="listitem"><b>{_stats["sources"]}</b><span>источников</span></div>
+            <div class="stat" role="listitem"><b>{_llm_label}</b><span>LLM</span></div>
         </div>
         <div class="hero-badges">
             <span class="badge-chip badge-purple">ГОСТ 34.602-2020</span>
-            <span class="badge-chip badge-blue">ASCO/CAP & RUSSCO</span>
+            <span class="badge-chip badge-blue">ASCO/CAP · RUSSCO</span>
             <span class="badge-chip badge-emerald">Non-SaMD</span>
         </div>
-    </div>
+    </section>
     """,
     unsafe_allow_html=True,
 )
@@ -420,6 +461,27 @@ def resolve_img_source(img_dict: dict) -> str | None:
         if p2.exists():
             return str(p2)
     return img_dict.get("image_url")
+
+
+def render_citations(citations: list[dict]) -> None:
+    """Список источников: номер, название, ссылка и лицензия (если есть)."""
+    import html as _h
+    import re as _re
+
+    rows = []
+    for i, c in enumerate(citations, 1):
+        ref = str(c.get("reference") or "")
+        url_m = _re.search(r"https?://\S+", ref)
+        url = c.get("url") or (url_m.group(0) if url_m else "")
+        meta = _h.escape(_re.sub(r"https?://\S+", "", ref).strip(" ·"))
+        link = f' · <a href="{_h.escape(url)}" target="_blank" rel="noopener noreferrer">открыть ↗</a>' if url else ""
+        rows.append(
+            f'<div class="cite"><span class="cite-n">{i}</span><div>'
+            f'<div class="cite-src">{_h.escape(str(c.get("source") or ""))}</div>'
+            f'<div class="cite-meta">{_h.escape(str(c.get("title") or ""))}{" · " + meta if meta else ""}{link}</div>'
+            f'</div></div>'
+        )
+    st.markdown("".join(rows), unsafe_allow_html=True)
 
 
 # История сообщений чата
@@ -487,9 +549,8 @@ for msg in st.session_state.messages:
         # Вывод источников
         citations = msg.get("citations", [])
         if citations:
-            with st.expander(f"📚 Верифицированные источники и цитаты ({len(citations)})"):
-                for c in citations:
-                    st.markdown(f"- **{c.get('source')}**: {c.get('title')} (*{c.get('reference')}*)")
+            with st.expander(f"📚 Источники · {len(citations)}"):
+                render_citations(citations)
 
         # Вывод регуляторного дисклеймера
         if msg.get("disclaimer"):
@@ -577,9 +638,8 @@ if prompt_input:
                         )
 
             if citations:
-                with st.expander(f"📚 Верифицированные источники и цитаты ({len(citations)})"):
-                    for c in citations:
-                        st.markdown(f"- **{c.get('source')}**: {c.get('title')} (*{c.get('reference')}*)")
+                with st.expander(f"📚 Источники · {len(citations)}"):
+                    render_citations(citations)
 
             if disclaimer:
                 st.markdown(f'<div class="regulatory-notice-dark">{disclaimer}</div>', unsafe_allow_html=True)

@@ -77,7 +77,43 @@ def _load_knowledge_corpus() -> list[dict[str, Any]]:
             except Exception as e:
                 log.debug("Error reading chunks from %s: %s", chunk_file, e)
 
+    # 4. Открытый корпус (Wikipedia CC BY-SA, Europe PMC CC BY), коммитится в репозиторий
+    corpus_dir = KNOWLEDGE_DIR / "corpus"
+    if corpus_dir.exists():
+        for chunk_file in sorted(corpus_dir.glob("*.jsonl")):
+            try:
+                with open(chunk_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        if not line.strip():
+                            continue
+                        row = json.loads(line)
+                        meta = row.get("metadata", {})
+                        docs.append({
+                            "id": f"{chunk_file.stem}_{meta.get('section_path', '')}_{meta.get('chunk_index', 0)}",
+                            "title": meta.get("section_path") or meta.get("book_title", ""),
+                            "nosology": "",
+                            "organ": "",
+                            "text": row.get("text", ""),
+                            "source": meta.get("book_title", chunk_file.stem),
+                            "page_reference": f"{meta.get('license', '')} · {meta.get('url', '')}".strip(" ·"),
+                            "url": meta.get("url"),
+                            "license": meta.get("license"),
+                            "category": meta.get("source_type", "open_corpus"),
+                        })
+            except Exception as e:
+                log.debug("Error reading corpus %s: %s", chunk_file, e)
+
     return docs
+
+
+_CORPUS_CACHE: list[dict[str, Any]] | None = None
+
+
+def _corpus() -> list[dict[str, Any]]:
+    global _CORPUS_CACHE
+    if _CORPUS_CACHE is None:
+        _CORPUS_CACHE = _load_knowledge_corpus()
+    return _CORPUS_CACHE
 
 
 def retrieve(
@@ -117,64 +153,101 @@ def retrieve(
     except Exception as e:
         log.debug("Qdrant retriever not active or skipped: %s", e)
 
-    # 2. Локальный гибридный поиск по эталонному корпусу знаний
-    corpus = _load_knowledge_corpus()
+    # 2. Локальный BM25 по эталонному корпусу (curated JSON + открытый корпус)
+    corpus = _corpus()
+    bm = _bm25_index()
     q = query.lower()
-    q_words = [w.strip(".,;:?!()\"'") for w in q.split() if len(w.strip(".,;:?!()\"'")) >= 2]
+    q_terms = [t for t in _tokens(q) if t in bm["df"]]
 
     scored = []
-    for doc in corpus:
-        score = 0.0
-        text = doc.get("text", "").lower()
-        title = doc.get("title", "").lower()
-        nosology = doc.get("nosology", "").lower()
-        organ = doc.get("organ", "").lower()
-
-        # Применение фильтров
+    for i, doc in enumerate(corpus):
         if filters:
-            if "nosology" in filters and filters["nosology"].lower() not in nosology:
+            if "nosology" in filters and filters["nosology"].lower() not in (doc.get("nosology") or "").lower():
                 continue
-            if "organ" in filters and filters["organ"].lower() not in organ:
+            if "organ" in filters and filters["organ"].lower() not in (doc.get("organ") or "").lower():
                 continue
-
-        # Взвешенное сопоставление терминов
-        for term in q_words:
-            if term in title:
-                score += 8.0
-            if term in nosology:
-                score += 6.0
-            if term in organ:
-                score += 4.0
-            if term in text:
-                score += 2.0
-                # Добавка за частоту вхождения
-                count = text.count(term)
-                score += min(count * 0.5, 4.0)
-
-        # Бонус за точные ключевые фразы
-        if "ki-67" in q or "ki67" in q:
-            if "ki-67" in text or "ki67" in text or "пролифератив" in text:
-                score += 10.0
-        if "her2" in q or "her-2" in q or "хер2" in q:
-            if "her2" in text or "erbb2" in text:
-                score += 10.0
-        if "люминальн" in q and "люминальн" in text:
-            score += 8.0
-        if "опеченен" in q and "опеченен" in text:
-            score += 10.0
-        if "стеатоз" in q and "стеатоз" in text:
-            score += 10.0
-        if "атеросклероз" in q and "атеросклероз" in text:
-            score += 10.0
-
-        if score > 0:
-            scored.append({**doc, "score": score})
+        tf, dl, title_terms = bm["tf"][i], bm["len"][i], bm["title"][i]
+        score = 0.0
+        for t in q_terms:
+            f = tf.get(t, 0)
+            idf = bm["idf"][t]
+            if f:
+                score += idf * f * 2.2 / (f + 1.2 * (0.25 + 0.75 * dl / bm["avgdl"]))
+            if t in title_terms:
+                score += idf * 1.5
+        if score <= 0:
+            continue
+        text = (doc.get("text") or "").lower()
+        # Доменные бонусы (сохраняем поведение для РМЖ/ИГХ)
+        if ("ki-67" in q or "ki67" in q) and ("ki-67" in text or "ki67" in text):
+            score += 3.0
+        if any(k in q for k in ("her2", "her-2")) and ("her2" in text or "erbb2" in text):
+            score += 3.0
+        # Верифицированные учебные темы — небольшой приоритет перед энциклопедией
+        if doc.get("category") in ("breast_cancer_ihc", "general_pathology", "textbook_chunk"):
+            score *= 1.25
+        scored.append({**doc, "score": round(score, 3)})
 
     scored.sort(key=lambda x: x["score"], reverse=True)
     results = scored[:top_k]
-
-    # Если точных совпадений нет, но база есть — вернем первые элементы релевантной категории
     if not results and corpus:
-        results = [{**corpus[0], "score": 1.0}]
-
+        results = [{**corpus[0], "score": 0.0}]
     return results
+
+
+_STOP = set("""и в во на не что как это для по из от до при или но а же ли бы то так все его её их он она они
+мы вы я ты чем чём кто где когда какой какие каков какова каковы который которые также только уже
+есть быть был была были этот эта эти тот та те с со к ко о об у за над под без между через про
+опишите опиши расскажите расскажи объясните объясни назовите перечислите покажи покажите дайте
+отличается отличие отличия разница сравните чем-то например очень более менее
+the a an of and or in on to for with by is are was were be what how which who why does do from
+describe explain list show tell about between difference vs versus""".split())
+
+
+def _stem(w: str) -> str:
+    # Грубый стемминг: обрезка окончаний (рус) и суффиксов (англ) до основы 4–6 символов
+    if any("а" <= ch <= "я" or ch == "ё" for ch in w):
+        w = w.replace("ё", "е")
+        return w[:6] if len(w) > 6 else w
+    for suf in ("ies", "es", "s", "ing", "ed"):
+        if w.endswith(suf) and len(w) - len(suf) >= 4:
+            w = w[: -len(suf)]
+            break
+    return w[:7]
+
+
+def _tokens(text: str) -> list[str]:
+    import re as _re
+    out = []
+    for w in _re.findall(r"[a-zа-яё0-9][a-zа-яё0-9\-]+", text.lower()):
+        if w in _STOP or len(w) < 3:
+            continue
+        out.append(_stem(w))
+    return out
+
+
+_BM25: dict[str, Any] | None = None
+
+
+def _bm25_index() -> dict[str, Any]:
+    global _BM25
+    if _BM25 is None:
+        import math
+        from collections import Counter
+
+        corpus = _corpus()
+        tfs, lens, titles, df = [], [], [], Counter()
+        for d in corpus:
+            toks = _tokens(f"{d.get('title', '')} {d.get('nosology', '')} {d.get('organ', '')} {d.get('text', '')}")
+            c = Counter(toks)
+            tfs.append(c)
+            lens.append(len(toks) or 1)
+            titles.append(set(_tokens(f"{d.get('title', '')} {d.get('nosology', '')}")))
+            df.update(c.keys())
+        n = max(len(corpus), 1)
+        _BM25 = {
+            "tf": tfs, "len": lens, "title": titles, "df": df,
+            "avgdl": sum(lens) / n,
+            "idf": {t: math.log(1 + (n - f + 0.5) / (f + 0.5)) for t, f in df.items()},
+        }
+    return _BM25
