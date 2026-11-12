@@ -21,7 +21,7 @@ def search_pubmed(query: str, max_results: int = 4) -> list[dict[str, Any]]:
             "retmode": "json",
             "sort": "relevance",
         }
-        with httpx.Client(timeout=8.0) as client:
+        with httpx.Client(timeout=3.0) as client:
             resp = client.get(search_url, params=params)
             if resp.status_code != 200:
                 return []
@@ -76,7 +76,7 @@ def search_arxiv(query: str, max_results: int = 3) -> list[dict[str, Any]]:
             "max_results": str(max_results),
             "sortBy": "relevance",
         }
-        with httpx.Client(timeout=8.0) as client:
+        with httpx.Client(timeout=3.0) as client:
             resp = client.get(url, params=params)
             if resp.status_code != 200:
                 return []
@@ -115,17 +115,23 @@ def search_web(query: str, max_results: int = 3) -> list[dict[str, Any]]:
     """Поиск в интернете через DuckDuckGo Search."""
     results = []
     try:
-        from duckduckgo_search import DDGS
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                from ddgs import DDGS
+            except ImportError:
+                from duckduckgo_search import DDGS
 
-        with DDGS() as ddgs:
-            raw_results = list(ddgs.text(query, max_results=max_results))
-            for r in raw_results:
-                results.append({
-                    "title": r.get("title", ""),
-                    "snippet": r.get("body", ""),
-                    "url": r.get("href", ""),
-                    "source_type": "Web search",
-                })
+            with DDGS(timeout=4.0) as ddgs:
+                raw_results = list(ddgs.text(query, max_results=max_results))
+                for r in raw_results:
+                    results.append({
+                        "title": r.get("title", ""),
+                        "snippet": r.get("body", ""),
+                        "url": r.get("href", ""),
+                        "source_type": "Web search",
+                    })
     except Exception as e:
         log.warning("Web search failed: %s", e)
     return results
