@@ -21,15 +21,19 @@ DEFAULT_OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
 
 
 def get_secret_or_env(name: str, default: str = "") -> str:
-    """Безопасно извлекает значение из streamlit.secrets или os.environ."""
+    """Безопасно извлекает значение из os.environ или streamlit.secrets без вызова исключений."""
     val = os.getenv(name)
     if val:
         return val
     try:
         import streamlit as st
-        if hasattr(st, "secrets") and name in st.secrets:
-            return str(st.secrets[name])
-    except Exception:
+        try:
+            sec = getattr(st, "secrets", None)
+            if sec is not None and name in sec:
+                return str(sec[name])
+        except BaseException:
+            pass
+    except BaseException:
         pass
     return default
 
@@ -40,7 +44,7 @@ def is_local_ollama_available(endpoint: str | None = None) -> bool:
     try:
         import httpx
         url = target.replace("/v1", "").rstrip("/") + "/api/version"
-        with httpx.Client(timeout=0.35) as client:
+        with httpx.Client(timeout=1.2) as client:
             r = client.get(url)
             return r.status_code == 200
     except Exception:
@@ -53,7 +57,28 @@ def test_llm_connection(
     endpoint_url: str | None = None,
     model_name: str | None = None,
 ) -> tuple[bool, str]:
-    """Проверяет доступность выбранного провайдера LLM коротким тестовым запросом."""
+    """Проверяет доступность выбранного провайдера LLM с понятной диагностикой ошибок."""
+    # Быстрые проверки наличия обязательных ключей и серверов
+    if provider == "groq":
+        k = api_key or get_secret_or_env("GROQ_API_KEY")
+        if not k:
+            return False, "Не указан API-ключ Groq. Введите ключ (gsk_...) в боковой панели или добавьте в secrets.toml. Бесплатно на https://console.groq.com"
+
+    elif provider == "gemini":
+        k = api_key or get_secret_or_env("GEMINI_API_KEY")
+        if not k:
+            return False, "Не указан API-ключ Gemini. Введите ключ (AIza...) в боковой панели. Бесплатно на https://aistudio.google.com"
+
+    elif provider == "openrouter":
+        k = api_key or get_secret_or_env("OPENROUTER_API_KEY")
+        if not k:
+            return False, "Не указан API-ключ OpenRouter. Введите ключ (sk-or-...) в боковой панели на https://openrouter.ai"
+
+    elif provider in ("tbank_local", "openai_compat"):
+        ep = endpoint_url or get_secret_or_env("VLLM_ENDPOINT") or get_secret_or_env("OLLAMA_ENDPOINT") or DEFAULT_LOCAL_ENDPOINT
+        if not is_local_ollama_available(ep):
+            return False, f"Сервер Ollama недоступен по адресу {ep}. Запустите его командой: ollama serve (или bash scripts/setup_local_llm.sh)"
+
     test_prompt = "Тест связи. Ответь одним словом: 'Готов'."
     try:
         reply = generate_with_llm(
@@ -69,7 +94,9 @@ def test_llm_connection(
             if len(preview) > 60:
                 preview = preview[:60] + "..."
             return True, f"Соединение успешно! Ответ модели: {preview}"
-        return False, "Модель вернула пустой ответ или превысила время ожидания."
+        if provider == "free_cloud":
+            return False, "Публичный сервер Free Cloud сейчас перегружен. Для надежной работы укажите бесплатный ключ Groq (console.groq.com) в панели слева."
+        return False, "Модель вернула пустой ответ или превысила таймаут."
     except Exception as e:
         return False, f"Ошибка подключения ({provider}): {str(e)}"
 

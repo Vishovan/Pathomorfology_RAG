@@ -1,0 +1,25 @@
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+
+# Streamlit secrets & local configs
+.streamlit/secrets.toml
+pathology-rag/.streamlit/secrets.toml
+
+# Streamlit agent skills (environment-specific symlinks)
+.agents/
+
+# Data and artifacts
+data/processed/
+data/images/
+.env
+.DS_Store
