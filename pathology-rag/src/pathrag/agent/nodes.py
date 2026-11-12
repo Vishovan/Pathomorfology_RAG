@@ -6,6 +6,7 @@ from ..retrieval.external_search import search_arxiv, search_pubmed, search_web
 from ..retrieval.hybrid_retriever import retrieve
 from ..retrieval.image_retriever import search_pathology_images
 from ..retrieval.legal_kb import get_medical_device_boundary_info, search_gost_standards
+from .llm import generate_with_llm
 from .router import route_intent
 from .state import AgentState
 

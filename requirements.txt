@@ -1,0 +1,13 @@
+streamlit>=1.30.0
+langgraph
+langchain-core
+llama-index-core
+duckduckgo-search
+beautifulsoup4
+lxml
+pydantic
+pyyaml
+httpx
+pillow
+gigachat
+pytest

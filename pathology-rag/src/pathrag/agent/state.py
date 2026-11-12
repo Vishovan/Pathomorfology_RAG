@@ -8,6 +8,9 @@ class AgentState(TypedDict, total=False):
     query: str
     mode: str | None  # явный выбор режима: 'pathology', 'images', 'legal', 'literature', 'auto'
     chat_history: list[dict[str, str]]
+    llm_provider: str | None  # 'gigachat', 'qwen_local', 'openai_compat', 'auto'
+    llm_api_key: str | None
+    use_llm: bool | None
 
     # Маршрутизация
     intent: str  # pathology_qa | breast_cancer_ihc | image_search | legal_gost | literature_search
