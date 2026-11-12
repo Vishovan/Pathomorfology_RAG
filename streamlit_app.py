@@ -40,7 +40,7 @@ except ImportError as e:
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 1. Настройка страницы и ультрасовременный темный стиль (Obsidian Minimalist)
+# 1. Настройка страницы и бело-голубой медицинский стиль (Clinical Minimalist)
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Pathology RAG | Clinical & Regulatory Copilot",
@@ -52,187 +52,269 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     :root {
-        --bg: #07090F;
-        --surface: rgba(17, 22, 34, 0.62);
-        --surface-solid: #0E131E;
-        --border: rgba(255, 255, 255, 0.07);
-        --border-strong: rgba(255, 255, 255, 0.14);
-        --accent: #7C9CFF;
-        --accent-2: #B490FF;
-        --accent-glow: rgba(124, 156, 255, 0.28);
-        --text: #EEF2F8;
-        --text-2: #9AA6B8;
-        --text-3: #5F6B7E;
+        --bg-page: #F8FAFC;
+        --surface: #FFFFFF;
+        --surface-soft: #F0F7FF;
+        --surface-subtle: #F8FAFC;
+        --border: #E2E8F0;
+        --border-strong: #CBD5E1;
+        --primary: #0284C7;
+        --primary-dark: #0369A1;
+        --primary-light: #E0F2FE;
+        --primary-border: #BAE6FD;
+        --accent-cyan: #0EA5E9;
+        --accent-teal: #0D9488;
+        --text-main: #0F172A;
+        --text-muted: #334155;
+        --text-subtle: #64748B;
         --radius: 14px;
+        --radius-lg: 18px;
+        --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04);
+        --shadow-md: 0 4px 18px -2px rgba(2, 132, 199, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        --shadow-hover: 0 10px 25px -3px rgba(2, 132, 199, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
         --ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     html, body, [class*="css"], .stApp {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-        color: var(--text) !important;
+        color: var(--text-main) !important;
         -webkit-font-smoothing: antialiased;
     }
-    /* Фон: глубокий графит + мягкое «северное сияние» */
+
+    /* Фон: медицинский чистый белый с мягким небесно-голубым свечением */
     .stApp {
         background:
-            radial-gradient(1100px 520px at 12% -8%, rgba(124, 156, 255, 0.13), transparent 60%),
-            radial-gradient(900px 480px at 100% 0%, rgba(180, 144, 255, 0.10), transparent 55%),
-            radial-gradient(800px 600px at 50% 120%, rgba(45, 212, 191, 0.06), transparent 60%),
-            var(--bg) !important;
+            radial-gradient(1100px 500px at 10% -5%, rgba(14, 165, 233, 0.08), transparent 60%),
+            radial-gradient(900px 500px at 95% 5%, rgba(2, 132, 199, 0.06), transparent 55%),
+            radial-gradient(1000px 700px at 50% 105%, rgba(13, 148, 136, 0.04), transparent 60%),
+            var(--bg-page) !important;
         background-attachment: fixed !important;
     }
 
     #MainMenu, footer {visibility: hidden;}
     header[data-testid="stHeader"] {background: transparent;}
-    .block-container {padding-top: 2rem; padding-bottom: 6rem; max-width: 1080px;}
+    .block-container {padding-top: 1.8rem; padding-bottom: 5rem; max-width: 1100px;}
 
-    /* Сайдбар — матовое стекло */
+    /* Сайдбар — чистый белый клинический стиль */
     section[data-testid="stSidebar"] {
-        background: rgba(10, 13, 21, 0.78) !important;
-        backdrop-filter: blur(18px) saturate(140%);
+        background: #FFFFFF !important;
         border-right: 1px solid var(--border) !important;
+        box-shadow: 2px 0 16px rgba(15, 23, 42, 0.03);
     }
     section[data-testid="stSidebar"] h3, section[data-testid="stSidebar"] h4 {
-        font-size: 0.72rem !important; text-transform: uppercase; letter-spacing: 0.12em;
-        color: var(--text-3) !important; font-weight: 600 !important;
+        font-size: 0.74rem !important; text-transform: uppercase; letter-spacing: 0.1em;
+        color: var(--primary-dark) !important; font-weight: 700 !important;
+    }
+    section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] span, section[data-testid="stSidebar"] label {
+        color: var(--text-muted) !important;
     }
     hr {border-color: var(--border) !important;}
 
-    /* Hero */
-    .hero {
-        position: relative; padding: 28px 30px; margin-bottom: 22px;
-        border: 1px solid var(--border); border-radius: 20px;
-        background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01));
-        overflow: hidden; animation: rise 0.7s var(--ease) both;
+    /* Hero Header */
+    .hero-medical {
+        position: relative; padding: 28px 32px; margin-bottom: 24px;
+        border: 1px solid var(--border); border-radius: var(--radius-lg);
+        background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+        box-shadow: var(--shadow-md); overflow: hidden;
+        animation: rise 0.6s var(--ease) both;
     }
-    .hero::before {
-        content: ""; position: absolute; inset: -1px; border-radius: 20px; padding: 1px;
-        background: linear-gradient(120deg, rgba(124,156,255,0.55), transparent 35%, transparent 65%, rgba(180,144,255,0.45));
+    .hero-medical::before {
+        content: ""; position: absolute; inset: -1px; border-radius: var(--radius-lg); padding: 1px;
+        background: linear-gradient(120deg, rgba(2, 132, 199, 0.45), transparent 40%, transparent 60%, rgba(14, 165, 233, 0.4));
         -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
         -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
     }
+    .hero-top-row {
+        display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;
+    }
     .hero-eyebrow {
-        font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; letter-spacing: 0.14em;
-        text-transform: uppercase; color: var(--accent); margin: 0 0 10px 0;
+        font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em;
+        text-transform: uppercase; color: var(--primary); font-weight: 600;
         display: inline-flex; align-items: center; gap: 8px;
     }
-    .pulse-dot {width: 7px; height: 7px; border-radius: 50%; background: #34D399;
-        box-shadow: 0 0 0 0 rgba(52,211,153,0.6); animation: pulse 2.2s infinite;}
-    .hero-title {
-        font-size: clamp(1.9rem, 3.6vw, 2.7rem); font-weight: 700; letter-spacing: -0.035em; line-height: 1.08;
-        margin: 0; background: linear-gradient(135deg, #FFFFFF 0%, #C9D4FF 55%, #B490FF 100%);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    .pulse-dot-cyan {
+        width: 8px; height: 8px; border-radius: 50%; background: #0284C7;
+        box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.6); animation: pulse 2s infinite;
     }
-    .hero-subtitle {margin: 10px 0 0 0; color: var(--text-2); font-size: 0.95rem; max-width: 640px; line-height: 1.5;}
-    .hero-stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 22px;}
-    .stat {padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.02);}
-    .stat b {display: block; font-size: 1.15rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em;}
-    .stat span {font-size: 0.72rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.08em;}
+    .hero-institution {
+        font-size: 0.75rem; color: var(--text-subtle); font-weight: 500;
+        background: #F1F5F9; padding: 3px 10px; border-radius: 6px;
+    }
+    .hero-title {
+        font-size: clamp(2rem, 3.8vw, 2.7rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1;
+        margin: 6px 0 10px 0; color: #0C4A6E;
+    }
+    .hero-subtitle {
+        margin: 0; color: var(--text-muted); font-size: 0.95rem; max-width: 680px; line-height: 1.55;
+    }
+    .hero-stats {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 22px;
+    }
+    .stat-box {
+        padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border);
+        background: #FFFFFF; box-shadow: var(--shadow-sm);
+        transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+    }
+    .stat-box:hover {
+        transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--primary-border);
+    }
+    .stat-box b {display: block; font-size: 1.2rem; font-weight: 700; color: #0F172A; letter-spacing: -0.02em;}
+    .stat-box span {font-size: 0.72rem; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;}
+    .stat-llm {border-left: 3px solid var(--primary);}
 
     /* Чипы */
-    .hero-badges {display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;}
-    .badge-chip {display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px;
-        font-size: 0.72rem; font-weight: 500; letter-spacing: 0.02em; border: 1px solid var(--border-strong);
-        background: rgba(255,255,255,0.03); color: var(--text-2);}
-    .badge-emerald {color: #6EE7B7; border-color: rgba(52,211,153,0.28); background: rgba(52,211,153,0.07);}
-    .badge-blue {color: #A5B8FF; border-color: rgba(124,156,255,0.3); background: rgba(124,156,255,0.08);}
-    .badge-purple {color: #CDB4FF; border-color: rgba(180,144,255,0.3); background: rgba(180,144,255,0.08);}
+    .hero-chips {display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px;}
+    .badge-med {
+        display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px;
+        font-size: 0.73rem; font-weight: 600; letter-spacing: 0.02em; border: 1px solid;
+    }
+    .badge-cyan {color: #0369A1; border-color: #BAE6FD; background: #F0F9FF;}
+    .badge-blue {color: #1D4ED8; border-color: #BFDBFE; background: #EFF6FF;}
+    .badge-teal {color: #0F766E; border-color: #99F6E4; background: #F0FDFA;}
+    .badge-slate {color: #475569; border-color: #E2E8F0; background: #F8FAFC;}
 
-    /* Кнопки-сценарии: адаптивная сетка карточек */
-    div[data-testid="stHorizontalBlock"] {gap: 10px !important; flex-wrap: wrap;}
+    /* Чипы в ответах чата */
+    .badge-chip {
+        display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+        font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em; border: 1px solid;
+    }
+    .badge-blue {color: #0369A1; border-color: #BAE6FD; background: #F0F9FF;}
+    .badge-emerald {color: #047857; border-color: #A7F3D0; background: #ECFDF5;}
+    .badge-purple {color: #6D28D9; border-color: #DDD6FE; background: #F5F3FF;}
+
+    /* Кнопки-сценарии */
+    div[data-testid="stHorizontalBlock"] {gap: 12px !important; flex-wrap: wrap;}
     div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
     div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {min-width: 200px; flex: 1 1 200px !important;}
     .stButton > button {
         width: 100%; min-height: 54px; text-align: left; justify-content: flex-start;
-        border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface);
-        backdrop-filter: blur(10px); color: var(--text); font-size: 0.84rem; font-weight: 500; padding: 12px 16px;
-        transition: transform 0.35s var(--ease), border-color 0.35s var(--ease), box-shadow 0.35s var(--ease), background 0.35s var(--ease);
-        animation: rise 0.6s var(--ease) both;
+        border-radius: var(--radius); border: 1px solid var(--border); background: #FFFFFF;
+        color: var(--text-main); font-size: 0.85rem; font-weight: 500; padding: 12px 16px;
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.25s var(--ease), border-color 0.25s var(--ease), box-shadow 0.25s var(--ease), background 0.25s var(--ease);
     }
     .stButton > button:hover {
-        transform: translateY(-2px); border-color: rgba(124,156,255,0.45);
-        background: rgba(124,156,255,0.07); box-shadow: 0 10px 30px -12px var(--accent-glow); color: #fff;
+        transform: translateY(-2px); border-color: #38BDF8;
+        background: #F0F9FF; box-shadow: var(--shadow-hover); color: var(--primary-dark);
     }
     .stButton > button:active {transform: translateY(0) scale(0.99);}
     .stButton > button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
-        outline: 2px solid var(--accent) !important; outline-offset: 2px;
+        outline: 2px solid var(--primary) !important; outline-offset: 2px;
     }
 
-    /* Поля ввода */
+    /* Поля ввода и селекторы */
     div[data-baseweb="select"] > div, .stTextInput input, .stTextArea textarea {
-        background: rgba(255,255,255,0.03) !important; border: 1px solid var(--border) !important;
-        border-radius: 10px !important; color: var(--text) !important; transition: border-color 0.25s var(--ease);
+        background: #FFFFFF !important; border: 1px solid var(--border) !important;
+        border-radius: 10px !important; color: var(--text-main) !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
     }
     div[data-baseweb="select"] > div:hover, .stTextInput input:hover {border-color: var(--border-strong) !important;}
+    div[data-baseweb="select"] > div:focus-within, .stTextInput input:focus-within {
+        border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15) !important;
+    }
 
     /* Чат */
     div[data-testid="stChatMessage"] {
-        background: transparent !important; padding: 1rem 0.25rem; animation: rise 0.5s var(--ease) both;
-        border-bottom: 1px solid rgba(255,255,255,0.035);
+        background: transparent !important; padding: 0.9rem 0.2rem;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        animation: rise 0.4s var(--ease) both;
     }
+    /* Сообщение пользователя: мягкий светло-голубой медицинский блок */
     div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]),
     div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-        background: rgba(124,156,255,0.045) !important; border: 1px solid rgba(124,156,255,0.12);
-        border-radius: var(--radius); padding: 1rem 1.1rem;
+        background: #EFF6FF !important; border: 1px solid #BFDBFE;
+        border-radius: var(--radius); padding: 1.1rem 1.25rem;
     }
-    div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li {line-height: 1.65; color: #DCE3EE;}
-    div[data-testid="stChatMessage"] strong {color: #fff;}
+    div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-user"]) p,
+    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) p {
+        color: #1E3A8A !important; font-weight: 500; line-height: 1.6;
+    }
+    /* Сообщение ассистента: чисто белая медицинская карточка */
+    div[data-testid="stChatMessage"]:has(div[data-testid="chatAvatarIcon-assistant"]),
+    div[data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+        background: #FFFFFF !important; border: 1px solid #E2E8F0;
+        border-radius: var(--radius); padding: 1.1rem 1.25rem;
+        box-shadow: 0 2px 12px rgba(15, 23, 42, 0.03);
+    }
+    div[data-testid="stChatMessage"] p, div[data-testid="stChatMessage"] li {line-height: 1.68; color: var(--text-muted);}
+    div[data-testid="stChatMessage"] strong {color: var(--text-main);}
+    div[data-testid="stChatMessage"] h3, div[data-testid="stChatMessage"] h4, div[data-testid="stChatMessage"] h5 {
+        color: #0C4A6E !important; margin-top: 1rem; margin-bottom: 0.5rem;
+    }
+
+    /* Поле ввода чата */
     div[data-testid="stChatInput"], div[data-testid="stBottomBlockContainer"] {background: transparent !important;}
     div[data-testid="stChatInput"] > div {
-        background: rgba(14,19,30,0.85) !important; backdrop-filter: blur(16px);
+        background: #FFFFFF !important;
         border: 1px solid var(--border-strong) !important; border-radius: 16px !important;
-        box-shadow: 0 20px 50px -20px rgba(0,0,0,0.8), 0 0 0 1px rgba(124,156,255,0.05);
-        transition: border-color 0.3s var(--ease), box-shadow 0.3s var(--ease);
+        box-shadow: 0 12px 36px -12px rgba(2, 132, 199, 0.15), 0 2px 6px rgba(0, 0, 0, 0.04);
+        transition: border-color 0.25s var(--ease), box-shadow 0.25s var(--ease);
     }
-    div[data-testid="stChatInput"] > div:focus-within {border-color: rgba(124,156,255,0.5) !important;
-        box-shadow: 0 20px 50px -20px rgba(0,0,0,0.8), 0 0 0 4px rgba(124,156,255,0.12);}
+    div[data-testid="stChatInput"] > div:focus-within {
+        border-color: var(--primary) !important;
+        box-shadow: 0 12px 40px -10px rgba(2, 132, 199, 0.25), 0 0 0 4px rgba(2, 132, 199, 0.12);
+    }
 
-    /* Экспандеры (источники) */
+    /* Экспандеры источников */
     div[data-testid="stExpander"] details {
-        border: 1px solid var(--border) !important; border-radius: 12px !important; background: rgba(255,255,255,0.015);
+        border: 1px solid var(--border) !important; border-radius: 12px !important; background: #FFFFFF;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
-    div[data-testid="stExpander"] summary:hover {color: var(--accent);}
+    div[data-testid="stExpander"] summary {color: #0369A1; font-weight: 600;}
+    div[data-testid="stExpander"] summary:hover {color: var(--primary);}
 
     /* Карточки микропрепаратов */
     div[data-testid="stImage"] img {border-radius: 12px; border: 1px solid var(--border);
-        transition: transform 0.5s var(--ease); }
+        transition: transform 0.4s var(--ease); box-shadow: 0 2px 8px rgba(0,0,0,0.04);}
     div[data-testid="stImage"] img:hover {transform: scale(1.015);}
-    .micro-card-dark {background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-        padding: 14px 16px; margin: 10px 0 14px 0; backdrop-filter: blur(10px);
-        transition: border-color 0.3s var(--ease), transform 0.3s var(--ease);}
-    .micro-card-dark:hover {border-color: var(--border-strong); transform: translateY(-1px);}
+    .micro-card-med {
+        background: #FFFFFF; border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 14px 16px; margin: 10px 0 14px 0; box-shadow: var(--shadow-sm);
+        transition: border-color 0.25s var(--ease), transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+    }
+    .micro-card-med:hover {
+        border-color: #38BDF8; transform: translateY(-2px); box-shadow: var(--shadow-md);
+    }
     .card-meta-bar {display: flex; gap: 6px; margin: 8px 0 10px 0; flex-wrap: wrap;}
-    .meta-tag-dark {background: rgba(255,255,255,0.04); color: var(--text-2); border: 1px solid var(--border);
-        font-size: 0.7rem; padding: 2px 8px; border-radius: 6px; font-family: 'JetBrains Mono', monospace;}
-    .wsi-action-btn-dark {display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
-        background: linear-gradient(135deg, #6D8BFF, #9C7BFF); color: #fff !important; text-decoration: none;
-        padding: 7px 14px; border-radius: 9px; font-size: 0.78rem; font-weight: 600;
-        box-shadow: 0 8px 24px -10px rgba(124,156,255,0.7); transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);}
-    .wsi-action-btn-dark:hover {transform: translateY(-1px); box-shadow: 0 12px 30px -10px rgba(124,156,255,0.9); text-decoration: none;}
+    .meta-tag-med {
+        background: #F0F9FF; color: #0369A1; border: 1px solid #BAE6FD;
+        font-size: 0.72rem; padding: 2px 9px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: 500;
+    }
+    .wsi-action-btn-med {
+        display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+        background: linear-gradient(135deg, #0284C7, #0EA5E9); color: #FFFFFF !important; text-decoration: none;
+        padding: 8px 16px; border-radius: 10px; font-size: 0.8rem; font-weight: 600;
+        box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35); transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+    }
+    .wsi-action-btn-med:hover {
+        transform: translateY(-1px); box-shadow: 0 6px 20px rgba(2, 132, 199, 0.45); text-decoration: none;
+    }
 
-    /* Источники */
-    .cite {display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.83rem;}
+    /* Источники цитирования */
+    .cite {display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 0.85rem;}
     .cite:last-child {border-bottom: none;}
-    .cite-n {flex: none; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center;
-        background: rgba(124,156,255,0.12); color: #A5B8FF; font-size: 0.7rem; font-family: 'JetBrains Mono', monospace;}
-    .cite-src {color: var(--text); font-weight: 500;}
-    .cite-meta {color: var(--text-3); font-size: 0.74rem;}
-    .cite a {color: var(--accent) !important; text-decoration: none;}
+    .cite-n {
+        flex: none; width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center;
+        background: #E0F2FE; color: #0284C7; font-size: 0.74rem; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    }
+    .cite-src {color: #0F172A; font-weight: 600;}
+    .cite-meta {color: #64748B; font-size: 0.76rem;}
+    .cite a {color: #0284C7 !important; text-decoration: none; font-weight: 500;}
+    .cite a:hover {text-decoration: underline;}
 
-    .regulatory-notice-dark {background: rgba(245,158,11,0.05); border: 1px solid rgba(245,158,11,0.16);
-        border-left: 2px solid #F59E0B; padding: 10px 14px; border-radius: 10px; font-size: 0.76rem;
-        color: #F5D58A; line-height: 1.45; margin-top: 14px;}
+    /* Регуляторное уведомление (Non-SaMD) */
+    .regulatory-notice-med {
+        background: #F0F9FF; border: 1px solid #BAE6FD; border-left: 4px solid #0284C7;
+        padding: 12px 16px; border-radius: 10px; font-size: 0.78rem; color: #0369A1; line-height: 1.5; margin-top: 14px;
+    }
 
-    .llm-status {display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--text-2);
-        padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,0.02);}
-
-    @keyframes rise {from {opacity: 0; transform: translateY(8px);} to {opacity: 1; transform: none;}}
-    @keyframes pulse {0% {box-shadow: 0 0 0 0 rgba(52,211,153,0.55);} 70% {box-shadow: 0 0 0 8px rgba(52,211,153,0);} 100% {box-shadow: 0 0 0 0 rgba(52,211,153,0);}}
+    @keyframes rise {from {opacity: 0; transform: translateY(6px);} to {opacity: 1; transform: none;}}
+    @keyframes pulse {0% {box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.5);} 70% {box-shadow: 0 0 0 8px rgba(2, 132, 199, 0);} 100% {box-shadow: 0 0 0 0 rgba(2, 132, 199, 0);}}
     @media (prefers-reduced-motion: reduce) {*, *::before, *::after {animation: none !important; transition: none !important;}}
-    @media (max-width: 640px) {.hero {padding: 20px;} .block-container {padding-top: 1rem;}}
+    @media (max-width: 640px) {.hero-medical {padding: 20px;} .block-container {padding-top: 1rem;}}
     </style>
     """,
     unsafe_allow_html=True,
@@ -414,7 +496,7 @@ with st.sidebar:
 
     st.markdown(
         """
-        <div class="regulatory-notice-dark">
+        <div class="regulatory-notice-med">
         <strong>Статус Non-SaMD:</strong><br>
         Система разработана для академических и справочно-образовательных целей и не классифицируется как медицинское изделие.
         </div>
@@ -434,20 +516,23 @@ _stats = _kb_stats()
 _llm_label = llm_options_map[selected_llm_key].split("·")[0].strip(" ⚡🟡🌐🤖🟢🔬")
 st.markdown(
     f"""
-    <section class="hero" role="banner" aria-label="Pathology RAG">
-        <p class="hero-eyebrow"><span class="pulse-dot" aria-hidden="true"></span>Clinical &amp; Regulatory Copilot</p>
-        <h1 class="hero-title">Pathology RAG</h1>
-        <p class="hero-subtitle">Ассистент патоморфолога: общая и частная патология, ИГХ рака молочной железы,
-        микропрепараты и WSI, нормативная база ГОСТ. Каждый ответ — со ссылками на источники.</p>
-        <div class="hero-stats" role="list">
-            <div class="stat" role="listitem"><b>{_stats["chunks"]}</b><span>фрагментов знаний</span></div>
-            <div class="stat" role="listitem"><b>{_stats["sources"]}</b><span>источников</span></div>
-            <div class="stat" role="listitem"><b>{_llm_label}</b><span>LLM</span></div>
+    <section class="hero-medical" role="banner" aria-label="Pathology RAG">
+        <div class="hero-top-row">
+            <span class="hero-eyebrow"><span class="pulse-dot-cyan" aria-hidden="true"></span>Clinical &amp; Regulatory Copilot</span>
+            <span class="hero-institution">Digital Pathology AI · Evidence-Based System</span>
         </div>
-        <div class="hero-badges">
-            <span class="badge-chip badge-purple">ГОСТ 34.602-2020</span>
-            <span class="badge-chip badge-blue">ASCO/CAP · RUSSCO</span>
-            <span class="badge-chip badge-emerald">Non-SaMD</span>
+        <h1 class="hero-title">Pathology RAG</h1>
+        <p class="hero-subtitle">Интеллектуальный ассистент врача-патологоанатома: доказательный синтез по протоколам иммуногистохимии РМЖ (HER2, Ki-67, ER/PR), цифровой атлас микропрепаратов WSI и нормативная база ГОСТ для медицинского ПО.</p>
+        <div class="hero-stats" role="list">
+            <div class="stat-box" role="listitem"><b>{_stats["chunks"]}</b><span>фрагментов знаний</span></div>
+            <div class="stat-box" role="listitem"><b>{_stats["sources"]}</b><span>клинических источников</span></div>
+            <div class="stat-box stat-llm" role="listitem"><b>{_llm_label}</b><span>активная модель</span></div>
+        </div>
+        <div class="hero-chips">
+            <span class="badge-med badge-cyan">🔬 ASCO/CAP · RUSSCO</span>
+            <span class="badge-med badge-blue">📜 ГОСТ 34.602-2020</span>
+            <span class="badge-med badge-teal">⚖️ Статус Non-SaMD</span>
+            <span class="badge-med badge-slate">🛡️ 152-ФЗ Совместимость</span>
         </div>
     </section>
     """,
@@ -555,16 +640,16 @@ for msg in st.session_state.messages:
                     wsi_link = img.get("wsi_url") or img.get("image_url") or ""
                     st.markdown(
                         f"""
-                        <div class="micro-card-dark">
-                            <strong style="color: #F8FAFC;">{img.get('title', 'Препарат')}</strong>
+                        <div class="micro-card-med">
+                            <strong style="color: #0F172A; font-size: 0.95rem;">{img.get('title', 'Препарат')}</strong>
                             <div class="card-meta-bar">
-                                <span class="meta-tag-dark">📍 {img.get('organ', '-')}</span>
-                                <span class="meta-tag-dark">🔬 {img.get('stain', 'H&E')}</span>
-                                <span class="meta-tag-dark">🔍 {img.get('magnification', '-')}</span>
+                                <span class="meta-tag-med">📍 {img.get('organ', '-')}</span>
+                                <span class="meta-tag-med">🔬 {img.get('stain', 'H&E')}</span>
+                                <span class="meta-tag-med">🔍 {img.get('magnification', '-')}</span>
                             </div>
-                            <p style="font-size:0.8rem; color:#94A3B8; margin:4px 0 8px 0; line-height:1.4;">{img.get('caption', '')}</p>
+                            <p style="font-size:0.83rem; color:#475569; margin:6px 0 10px 0; line-height:1.45;">{img.get('caption', '')}</p>
                             <small style="color:#64748B;">Источник: {img.get('source_name', 'Атлас')}</small><br>
-                            {f'<a href="{wsi_link}" target="_blank" rel="noopener noreferrer" class="wsi-action-btn-dark">🔬 Открыть WSI в полном разрешении ↗</a>' if wsi_link else ''}
+                            {f'<a href="{wsi_link}" target="_blank" rel="noopener noreferrer" class="wsi-action-btn-med">🔬 Открыть WSI в полном разрешении ↗</a>' if wsi_link else ''}
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -578,7 +663,7 @@ for msg in st.session_state.messages:
 
         # Вывод регуляторного дисклеймера
         if msg.get("disclaimer"):
-            st.markdown(f'<div class="regulatory-notice-dark">{msg["disclaimer"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="regulatory-notice-med">{msg["disclaimer"]}</div>', unsafe_allow_html=True)
 
 
 # -----------------------------------------------------------------------------
@@ -650,16 +735,16 @@ if prompt_input:
                         wsi_link = img.get("wsi_url") or img.get("image_url") or ""
                         st.markdown(
                             f"""
-                            <div class="micro-card-dark">
-                                <strong style="color: #F8FAFC;">{img.get('title', 'Препарат')}</strong>
+                            <div class="micro-card-med">
+                                <strong style="color: #0F172A; font-size: 0.95rem;">{img.get('title', 'Препарат')}</strong>
                                 <div class="card-meta-bar">
-                                    <span class="meta-tag-dark">📍 {img.get('organ', '-')}</span>
-                                    <span class="meta-tag-dark">🔬 {img.get('stain', 'H&E')}</span>
-                                    <span class="meta-tag-dark">🔍 {img.get('magnification', '-')}</span>
+                                    <span class="meta-tag-med">📍 {img.get('organ', '-')}</span>
+                                    <span class="meta-tag-med">🔬 {img.get('stain', 'H&E')}</span>
+                                    <span class="meta-tag-med">🔍 {img.get('magnification', '-')}</span>
                                 </div>
-                                <p style="font-size:0.8rem; color:#94A3B8; margin:4px 0 8px 0; line-height:1.4;">{img.get('caption', '')}</p>
+                                <p style="font-size:0.83rem; color:#475569; margin:6px 0 10px 0; line-height:1.45;">{img.get('caption', '')}</p>
                                 <small style="color:#64748B;">Источник: {img.get('source_name', 'Атлас')}</small><br>
-                                {f'<a href="{wsi_link}" target="_blank" rel="noopener noreferrer" class="wsi-action-btn-dark">🔬 Открыть WSI в полном разрешении ↗</a>' if wsi_link else ''}
+                                {f'<a href="{wsi_link}" target="_blank" rel="noopener noreferrer" class="wsi-action-btn-med">🔬 Открыть WSI в полном разрешении ↗</a>' if wsi_link else ''}
                             </div>
                             """,
                             unsafe_allow_html=True,
@@ -670,7 +755,7 @@ if prompt_input:
                     render_citations(citations)
 
             if disclaimer:
-                st.markdown(f'<div class="regulatory-notice-dark">{disclaimer}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="regulatory-notice-med">{disclaimer}</div>', unsafe_allow_html=True)
 
             st.session_state.messages.append({
                 "role": "assistant",
