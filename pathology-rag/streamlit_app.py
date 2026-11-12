@@ -1,17 +1,16 @@
 """Streamlit Web Application для Pathology RAG (деплой на share.streamlit.io).
 
-Мультимодальный ассистент патоморфолога & консультант по стандартам ГОСТ:
-- Рак молочной железы (РМЖ): HER2 0/1+/2+/3+, ISH-алгоритм, Ki-67, Allred ER/PR, Nottingham grade;
-- Общая патоморфология и нозологии;
-- Поиск микропрепаратов с глубокими ссылками на Whole Slide Images (WSI);
-- Режим юриста: Роспатент, Минцифры, Росздравнадзор (Non-SaMD) и ГОСТы (34.602, 59793, 56939-2024 и др.);
-- Внешний поиск: PubMed E-utilities, arXiv, bioRxiv, Web.
+Ультрасовременный минималистичный интерфейс:
+- Прямой вывод микропрепаратов через st.image (без битых редиректов на GitHub);
+- Поддержка коммерческих LLM: Сбер GigaChat (152-ФЗ), Qwen 2.5 (Apache 2.0) и автономная база;
+- Специализированный RAG по РМЖ (HER2 0/1+/2+/3+, FISH, Ki-67, Allred, Nottingham);
+- Режим юриста: Роспатент, Минцифры, Росздравнадзор (Non-SaMD) и ГОСТы (34.602, 56939-2024 и др.).
 """
 import os
 import sys
 from pathlib import Path
 
-# Добавляем пути к модулям (для запуска как из корня, так и из подпапки)
+# Добавляем пути к модулям
 CURRENT_DIR = Path(__file__).resolve().parent
 if (CURRENT_DIR / "pathology-rag" / "src").exists():
     sys.path.insert(0, str(CURRENT_DIR / "pathology-rag" / "src"))
@@ -25,13 +24,12 @@ import streamlit as st
 # Импорт графа агента
 try:
     from pathrag.agent import ask_agent
-    from pathrag.retrieval.legal_kb import load_legal_data
 except ImportError as e:
     st.error(f"Ошибка импорта модулей Pathology RAG: {e}")
     st.stop()
 
 # -----------------------------------------------------------------------------
-# 1. Настройка страницы
+# 1. Настройка страницы и минималистичный ультрасовременный стиль
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="Pathology RAG | Ассистент патоморфолога и юриста",
@@ -40,60 +38,130 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Пользовательские CSS стили
 st.markdown(
     """
     <style>
-    .main-title {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 0.2rem;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
-    .sub-title {
+    
+    /* Скрытие дефолтного хедера Streamlit для минимализма */
+    header[data-testid="stHeader"] {
+        background-color: transparent;
+    }
+    
+    .hero-title {
+        font-size: 2.1rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #0f172a;
+        margin-bottom: 0.15rem;
+    }
+    
+    .hero-subtitle {
         font-size: 0.95rem;
         color: #64748b;
-        margin-bottom: 1.2rem;
+        margin-bottom: 1.5rem;
+        font-weight: 400;
     }
-    .badge-status {
-        background-color: #ecfdf5;
-        color: #065f46;
-        padding: 4px 10px;
+    
+    .badge-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
         border-radius: 9999px;
-        font-size: 0.75rem;
+        font-size: 0.72rem;
         font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+    .badge-blue {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #dbeafe;
+    }
+    .badge-emerald {
+        background: #ecfdf5;
+        color: #047857;
         border: 1px solid #a7f3d0;
     }
-    .img-card {
+    
+    /* Карточки быстрых действий */
+    .stButton > button {
+        border-radius: 10px;
+        font-size: 0.82rem;
+        font-weight: 500;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #334155;
+        padding: 8px 12px;
+        transition: all 0.15s ease-in-out;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .stButton > button:hover {
+        border-color: #3b82f6;
+        color: #2563eb;
+        background: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+    }
+    
+    /* Карточка микропрепарата */
+    .micro-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 12px;
         padding: 14px;
-        margin-bottom: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-top: 10px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
-    .wsi-btn {
-        display: inline-block;
+    
+    .card-meta {
+        display: flex;
+        gap: 6px;
+        margin: 6px 0 8px 0;
+        flex-wrap: wrap;
+    }
+    
+    .meta-pill {
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 0.72rem;
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-weight: 500;
+    }
+    
+    .wsi-link-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         background: #2563eb;
-        color: white !important;
-        padding: 6px 14px;
-        border-radius: 8px;
+        color: #ffffff !important;
         text-decoration: none;
-        font-size: 0.82rem;
+        padding: 7px 14px;
+        border-radius: 8px;
+        font-size: 0.8rem;
         font-weight: 500;
         margin-top: 8px;
+        transition: background 0.15s;
     }
-    .wsi-btn:hover {
+    .wsi-link-btn:hover {
         background: #1d4ed8;
     }
-    .disclaimer-box {
-        background-color: #fffbeb;
-        border-left: 4px solid #f59e0b;
+    
+    /* Минималистичный дисклеймер */
+    .disclaimer-banner {
+        background: #fffbeb;
+        border-left: 3px solid #f59e0b;
         padding: 10px 14px;
-        font-size: 0.8rem;
-        color: #92400e;
-        border-radius: 4px;
+        border-radius: 6px;
+        font-size: 0.78rem;
+        color: #78350f;
         margin-top: 12px;
+        line-height: 1.4;
     }
     </style>
     """,
@@ -105,33 +173,33 @@ st.markdown(
 # -----------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("### 🔬 Pathology RAG")
-    st.markdown('<span class="badge-status">● LangGraph + LlamaIndex Active</span>', unsafe_allow_html=True)
-    st.caption("Мультимодальная справочная система по патоморфологии и стандартам ГОСТ")
+    st.markdown('<span class="badge-tag badge-emerald">● LangGraph + LlamaIndex</span>', unsafe_allow_html=True)
+    st.caption("Мультимодальный ассистент патоморфолога & консультант по ГОСТам")
     st.divider()
 
-    st.markdown("#### 🎯 Режим работы")
-    mode_options = {
+    st.markdown("#### 🎯 Режим консультации")
+    modes = {
         "auto": "🤖 Авто-выбор (LangGraph Router)",
         "breast_cancer": "🔬 РМЖ: ИГХ (HER2 & Ki-67)",
         "pathology": "📖 Общая патоморфология",
         "images": "🖼️ Микропрепараты & WSI",
         "legal": "⚖️ Режим юриста (ГОСТы и SaMD)",
-        "literature": "🌐 Внешний поиск (PubMed / arXiv)",
+        "literature": "🌐 Научный поиск (PubMed / arXiv)",
     }
-    selected_mode_key = st.radio(
-        "Выберите тематический фокус:",
-        options=list(mode_options.keys()),
-        format_func=lambda x: mode_options[x],
+    selected_mode = st.radio(
+        "Выберите направление:",
+        options=list(modes.keys()),
+        format_func=lambda x: modes[x],
         index=0,
     )
 
     st.divider()
 
-    st.markdown("#### ⚙️ LLM для коммерциализации")
-    llm_choice = st.selectbox(
+    st.markdown("#### ⚙️ Коммерциализация & LLM")
+    llm_option = st.selectbox(
         "Модель генерации:",
         options=[
-            "Базовая экспертная база (Бесплатно, без API-ключей)",
+            "Автономная база (Бесплатно, без API-ключей)",
             "Сбер GigaChat (152-ФЗ, коммерческая лицензия в РФ)",
             "Qwen 2.5 (Apache 2.0 open-weights / vLLM / Ollama)",
             "OpenAI-совместимый эндпоинт",
@@ -139,21 +207,20 @@ with st.sidebar:
         index=0,
     )
 
-    api_key_input = None
-    if "GigaChat" in llm_choice:
-        # Проверяем секреты Streamlit
-        default_key = st.secrets.get("GIGACHAT_CREDENTIALS", "") if hasattr(st, "secrets") else ""
-        api_key_input = st.text_input("GigaChat Client Secret / Token:", value=default_key, type="password")
-        st.caption("Соответствует 152-ФЗ. Сервера в РФ, коммерческое использование разрешено.")
-    elif "Qwen" in llm_choice or "OpenAI" in llm_choice:
+    api_key_val = None
+    if "GigaChat" in llm_option:
+        default_secret = st.secrets.get("GIGACHAT_CREDENTIALS", "") if hasattr(st, "secrets") else ""
+        api_key_val = st.text_input("GigaChat Client Secret / Токен:", value=default_secret, type="password")
+        st.caption("Соответствует 152-ФЗ (серверы в РФ). Разрешено для коммерческого ПО в РФ.")
+    elif "Qwen" in llm_option or "OpenAI" in llm_option:
         default_endpoint = os.getenv("VLLM_ENDPOINT", "http://localhost:11434/v1")
-        endpoint_url = st.text_input("API Base URL:", value=default_endpoint)
-        api_key_input = st.text_input("API Key (при наличии):", type="password")
-        st.caption("Лицензия Apache 2.0: полностью свободна для коммерческих продуктов.")
+        st.text_input("API Base URL:", value=default_endpoint)
+        api_key_val = st.text_input("API Token (если требуется):", type="password")
+        st.caption("Лицензия Apache 2.0: полностью свободна для коммерческих внедрений.")
 
     st.divider()
 
-    with st.expander("📜 Проектная документация по ГОСТ"):
+    with st.expander("📜 Документация по ГОСТам"):
         st.markdown("""
         - [ТЗ по ГОСТ 34.602-2020](https://github.com/Vishovan/Pathomorfology_RAG/blob/main/pathology-rag/docs/gost/TZ_GOST_34_602_2020.md)
         - [Ведомость документов ГОСТ 34.201](https://github.com/Vishovan/Pathomorfology_RAG/blob/main/pathology-rag/docs/gost/Vedomost_Dokumentov_GOST_34_201_2020.md)
@@ -163,9 +230,9 @@ with st.sidebar:
 
     st.markdown(
         """
-        <div class="disclaimer-box">
+        <div class="disclaimer-banner">
         <strong>Статус Non-SaMD:</strong><br>
-        Система разработана как справочно-образовательная. Не обрабатывает персональные данные пациентов и не является медицинским изделием.
+        Система разработана для справочно-образовательных целей и не классифицируется как медицинское изделие.
         </div>
         """,
         unsafe_allow_html=True,
@@ -174,43 +241,57 @@ with st.sidebar:
 # -----------------------------------------------------------------------------
 # 3. Основная область (Main Area)
 # -----------------------------------------------------------------------------
-st.markdown('<div class="main-title">Pathology RAG Agent</div>', unsafe_allow_html=True)
+st.markdown('<div class="hero-title">Pathology RAG Agent</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="sub-title">Интеллектуальная система ответов по патоморфологии (РМЖ ИГХ, нозологии, WSI) и нормативной базе ГОСТ</div>',
+    '<div class="hero-subtitle">Интеллектуальная система по патоморфологии (РМЖ ИГХ, WSI) и нормативной базе ГОСТ</div>',
     unsafe_allow_html=True,
 )
 
-# Быстрые кнопки-примеры
-st.markdown("##### 💡 Быстрые примеры запросов:")
+# Быстрые кнопки запросов в один клик
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    if st.button("🔬 HER2 2+ и ISH/FISH (РМЖ)", use_container_width=True):
-        st.session_state["preset_query"] = "Какие критерии оценки HER2 2+ при раке молочной железы и когда требуется подтверждающее тестирование FISH?"
+    if st.button("🔬 HER2 2+ и ISH/FISH", use_container_width=True):
+        st.session_state["query_preset"] = "Какие критерии оценки HER2 2+ при раке молочной железы и когда требуется подтверждающее тестирование FISH?"
 with col2:
     if st.button("🔬 Ki-67 и подтипы РМЖ", use_container_width=True):
-        st.session_state["preset_query"] = "Как подсчитывается Ki-67 и какие пороговые значения разделяют люминальный А и В подтипы?"
+        st.session_state["query_preset"] = "Как подсчитывается Ki-67 и какие пороговые значения разделяют люминальный А и В подтипы?"
 with col3:
     if st.button("🖼️ WSI: серое опеченение", use_container_width=True):
-        st.session_state["preset_query"] = "Покажи микропрепарат серого опеченения при крупозной пневмонии с описанием и ссылкой на WSI"
+        st.session_state["query_preset"] = "Покажи микропрепарат серого опеченения при крупозной пневмонии"
 with col4:
-    if st.button("⚖️ Юрист: ГОСТы и медизделие", use_container_width=True):
-        st.session_state["preset_query"] = "Какие процедуры пройти (Роспатент, Минцифры, Росздравнадзор) и какие ГОСТы нужны для разработки ТЗ?"
+    if st.button("⚖️ Юрист: ГОСТ 34.602 и SaMD", use_container_width=True):
+        st.session_state["query_preset"] = "Какие процедуры пройти (Роспатент, Минцифры, Росздравнадзор) и какие ГОСТы нужны для разработки ТЗ?"
 
-# Инициализация истории сообщений
-if "messages" not in st.session_state:
-    st.session_state.messages = [
+
+def resolve_image_path(img_dict: dict) -> str | None:
+    """Определяет доступный путь или URL к изображению."""
+    local_rel = img_dict.get("local_path")
+    if local_rel:
+        p1 = CURRENT_DIR / local_rel
+        if p1.exists():
+            return str(p1)
+        p2 = CURRENT_DIR / "pathology-rag" / local_rel
+        if p2.exists():
+            return str(p2)
+    # Иначе используем проверенный web URL
+    return img_dict.get("image_url")
+
+
+# История сообщений
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
         {
             "role": "assistant",
             "content": """Приветствую! Я мультимодальный RAG-ассистент по **патоморфологии** и **нормативной базе ГОСТ**.
 
-Я специализируюсь на:
-1. **Раке молочной железы (РМЖ):** критерии оценки HER2/neu (0, 1+, 2+ equivocal, 3+), рефлекс-тестирование FISH/SISH, индекс пролиферации Ki-67 (hot spots, люминальный А/В), Allred ER/PR, Ноттингемская градация, дифдиагноз долькового рака (потеря E-cadherin);
-2. **Общей патоморфологии:** пневмонии, дистрофии, атеросклероз, туберкулез, колоректальный рак;
-3. **Микропрепаратах и Whole Slide Images (WSI):** показ гистологических снимков с глубокими ссылками на цифровые вьюеры;
-4. **Режиме юриста:** разграничение Роспатента, Минцифры и Росздравнадзора (Non-SaMD), разработка ТЗ по ГОСТ 34.602-2020, безопасная разработка ГОСТ Р 56939-2024.
+Я готов ответить на вопросы по:
+- **Раку молочной железы (РМЖ):** критерии оценки HER2/neu (0, 1+, 2+ equivocal, 3+), рефлекс-тестирование FISH/SISH, индекс пролиферации Ki-67 (hot spots, люминальный А/В), Allred ER/PR, Ноттингемская градация, дифдиагноз долькового рака (утрата E-cadherin);
+- **Общей патоморфологии:** пневмонии, дистрофии, атеросклероз, туберкулез, аденокарциномы;
+- **Микропрепаратам и Whole Slide Images (WSI):** показ гистологических снимков высокого разрешения с кнопкой перехода в цифровой вьюер;
+- **Режиму юриста:** разграничение Роспатента, Минцифры и Росздравнадзора (Non-SaMD), разработка ТЗ по ГОСТ 34.602-2020, безопасная разработка ГОСТ Р 56939-2024.
 
-Задайте любой интересующий вас вопрос!""",
+Задайте вопрос в поле внизу или выберите готовый пример выше!""",
             "intent": "system_welcome",
             "images": [],
             "citations": [],
@@ -218,29 +299,45 @@ if "messages" not in st.session_state:
         }
     ]
 
-# Отображение истории сообщений
-for msg in st.session_state.messages:
+# Отрисовка сообщений
+for msg in st.session_state.chat_history:
     with st.chat_message(msg["role"], avatar="🧑‍⚕️" if msg["role"] == "user" else "🔬"):
         if msg.get("intent") and msg["role"] == "assistant" and msg.get("intent") != "system_welcome":
-            st.caption(f"Маршрут графа LangGraph: `{msg['intent']}`")
+            st.markdown(f'<span class="badge-tag badge-blue">Маршрут: {msg["intent"]}</span>', unsafe_allow_html=True)
 
         st.markdown(msg["content"])
 
-        # Вывод карточек изображений (если есть)
+        # Отрисовка карточек микропрепаратов
         images = msg.get("images", [])
         if images:
-            st.markdown("#### 📸 Микропрепараты и Whole Slide Images:")
-            img_cols = st.columns(min(len(images), 2))
+            st.markdown("#### 📸 Микропрепараты и гистологические срезы:")
+            cols = st.columns(min(len(images), 2))
             for i, img in enumerate(images[:4]):
-                with img_cols[i % 2]:
+                with cols[i % 2]:
+                    # 1. Показ самого изображения
+                    img_src = resolve_image_path(img)
+                    if img_src:
+                        try:
+                            st.image(img_src, caption=img.get("title", "Микропрепарат"), use_container_width=True)
+                        except Exception:
+                            # Fallback на image_url
+                            if img.get("image_url"):
+                                st.image(img.get("image_url"), caption=img.get("title", "Микропрепарат"), use_container_width=True)
+
+                    # 2. Карточка метаданных и прямая кнопка перехода
+                    wsi_link = img.get("wsi_url") or img.get("image_url") or ""
                     st.markdown(
                         f"""
-                        <div class="img-card">
-                            <strong>{img.get('title', 'Препарат')}</strong><br>
-                            <small>📍 <strong>Орган:</strong> {img.get('organ', '-')} | <strong>Окраска:</strong> {img.get('stain', 'H&E')} | <strong>Увеличение:</strong> {img.get('magnification', '-')}</small>
-                            <p style="font-size:0.82rem; color:#475569; margin: 6px 0;">{img.get('caption', '')}</p>
-                            <small style="color:#64748b;">Источник: {img.get('source_name', 'Атлас')}</small><br>
-                            {f'<a href="{img.get("wsi_url")}" target="_blank" class="wsi-btn">🔬 Открыть Whole Slide Image (WSI)</a>' if img.get("wsi_url") else ''}
+                        <div class="micro-card">
+                            <strong>{img.get('title', 'Препарат')}</strong>
+                            <div class="card-meta">
+                                <span class="meta-pill">📍 {img.get('organ', '-')}</span>
+                                <span class="meta-pill">🔬 {img.get('stain', 'H&E')}</span>
+                                <span class="meta-pill">🔍 {img.get('magnification', '-')}</span>
+                            </div>
+                            <p style="font-size:0.8rem; color:#475569; margin:4px 0 8px 0;">{img.get('caption', '')}</p>
+                            <small style="color:#94a3b8;">Источник: {img.get('source_name', 'Атлас')}</small><br>
+                            {f'<a href="{wsi_link}" target="_blank" class="wsi-link-btn">🔬 Открыть полноразмерный снимок / WSI</a>' if wsi_link else ''}
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -256,70 +353,80 @@ for msg in st.session_state.messages:
         # Вывод дисклеймера
         if msg.get("disclaimer"):
             st.markdown(
-                f'<div class="disclaimer-box">{msg["disclaimer"]}</div>',
+                f'<div class="disclaimer-banner">{msg["disclaimer"]}</div>',
                 unsafe_allow_html=True,
             )
 
 # -----------------------------------------------------------------------------
-# 4. Обработка ввода пользователя
+# 4. Обработка ввода
 # -----------------------------------------------------------------------------
-prompt = st.chat_input("Задайте вопрос по патоморфологии, микропрепаратам или ГОСТам...")
+user_query = st.chat_input("Задайте вопрос по патоморфологии, микропрепаратам или ГОСТам...")
 
-# Если была нажата кнопка с быстрым примером
-if "preset_query" in st.session_state and st.session_state["preset_query"]:
-    prompt = st.session_state["preset_query"]
-    st.session_state["preset_query"] = None
+# Обработка нажатия на кнопку-пример
+if "query_preset" in st.session_state and st.session_state["query_preset"]:
+    user_query = st.session_state["query_preset"]
+    st.session_state["query_preset"] = None
 
-if prompt:
-    # 1. Добавляем сообщение пользователя
-    st.session_state.messages.append({"role": "user", "content": prompt})
+if user_query:
+    st.session_state.chat_history.append({"role": "user", "content": user_query})
     with st.chat_message("user", avatar="🧑‍⚕️"):
-        st.markdown(prompt)
+        st.markdown(user_query)
 
-    # 2. Обработка через граф LangGraph
     with st.chat_message("assistant", avatar="🔬"):
         with st.spinner("Оркестрация в графе LangGraph (роутер -> ретривер -> грейдер -> генерация)..."):
-            active_mode = None if selected_mode_key == "auto" else selected_mode_key
+            active_m = None if selected_mode == "auto" else selected_mode
 
-            # Определение LLM параметров
-            llm_provider = None
-            if "GigaChat" in llm_choice:
-                llm_provider = "gigachat"
-            elif "Qwen" in llm_choice:
-                llm_provider = "qwen_local"
-            elif "OpenAI" in llm_choice:
-                llm_provider = "openai_compat"
+            provider_code = None
+            if "GigaChat" in llm_option:
+                provider_code = "gigachat"
+            elif "Qwen" in llm_option:
+                provider_code = "qwen_local"
+            elif "OpenAI" in llm_option:
+                provider_code = "openai_compat"
 
-            result = ask_agent(
-                prompt,
-                mode=active_mode,
-                llm_provider=llm_provider,
-                llm_api_key=api_key_input,
-                use_llm=bool(llm_provider),
+            res = ask_agent(
+                user_query,
+                mode=active_m,
+                llm_provider=provider_code,
+                llm_api_key=api_key_val,
+                use_llm=bool(provider_code),
             )
 
-            intent = result.get("intent", "pathology_qa")
-            answer = result.get("final_answer", "")
-            citations = result.get("citations", [])
-            disclaimer = result.get("disclaimer", "")
-            images = result.get("retrieved_images", [])
+            intent = res.get("intent", "pathology_qa")
+            answer = res.get("final_answer", "")
+            citations = res.get("citations", [])
+            disclaimer = res.get("disclaimer", "")
+            images = res.get("retrieved_images", [])
 
-            st.caption(f"Маршрут графа LangGraph: `{intent}`")
+            st.markdown(f'<span class="badge-tag badge-blue">Маршрут: {intent}</span>', unsafe_allow_html=True)
             st.markdown(answer)
 
             if images:
-                st.markdown("#### 📸 Микропрепараты и Whole Slide Images:")
-                img_cols = st.columns(min(len(images), 2))
+                st.markdown("#### 📸 Микропрепараты и гистологические срезы:")
+                cols = st.columns(min(len(images), 2))
                 for i, img in enumerate(images[:4]):
-                    with img_cols[i % 2]:
+                    with cols[i % 2]:
+                        img_src = resolve_image_path(img)
+                        if img_src:
+                            try:
+                                st.image(img_src, caption=img.get("title", "Микропрепарат"), use_container_width=True)
+                            except Exception:
+                                if img.get("image_url"):
+                                    st.image(img.get("image_url"), caption=img.get("title", "Микропрепарат"), use_container_width=True)
+
+                        wsi_link = img.get("wsi_url") or img.get("image_url") or ""
                         st.markdown(
                             f"""
-                            <div class="img-card">
-                                <strong>{img.get('title', 'Препарат')}</strong><br>
-                                <small>📍 <strong>Орган:</strong> {img.get('organ', '-')} | <strong>Окраска:</strong> {img.get('stain', 'H&E')} | <strong>Увеличение:</strong> {img.get('magnification', '-')}</small>
-                                <p style="font-size:0.82rem; color:#475569; margin: 6px 0;">{img.get('caption', '')}</p>
-                                <small style="color:#64748b;">Источник: {img.get('source_name', 'Атлас')}</small><br>
-                                {f'<a href="{img.get("wsi_url")}" target="_blank" class="wsi-btn">🔬 Открыть Whole Slide Image (WSI)</a>' if img.get("wsi_url") else ''}
+                            <div class="micro-card">
+                                <strong>{img.get('title', 'Препарат')}</strong>
+                                <div class="card-meta">
+                                    <span class="meta-pill">📍 {img.get('organ', '-')}</span>
+                                    <span class="meta-pill">🔬 {img.get('stain', 'H&E')}</span>
+                                    <span class="meta-pill">🔍 {img.get('magnification', '-')}</span>
+                                </div>
+                                <p style="font-size:0.8rem; color:#475569; margin:4px 0 8px 0;">{img.get('caption', '')}</p>
+                                <small style="color:#94a3b8;">Источник: {img.get('source_name', 'Атлас')}</small><br>
+                                {f'<a href="{wsi_link}" target="_blank" class="wsi-link-btn">🔬 Открыть полноразмерный снимок / WSI</a>' if wsi_link else ''}
                             </div>
                             """,
                             unsafe_allow_html=True,
@@ -332,12 +439,11 @@ if prompt:
 
             if disclaimer:
                 st.markdown(
-                    f'<div class="disclaimer-box">{disclaimer}</div>',
+                    f'<div class="disclaimer-banner">{disclaimer}</div>',
                     unsafe_allow_html=True,
                 )
 
-            # Сохранение ответа в историю
-            st.session_state.messages.append({
+            st.session_state.chat_history.append({
                 "role": "assistant",
                 "content": answer,
                 "intent": intent,
