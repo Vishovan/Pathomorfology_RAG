@@ -13,7 +13,7 @@ from typing import Any
 
 log = logging.getLogger("pathrag.agent.llm")
 
-DEFAULT_TBANK_MODEL = "t-tech/T-pro-it-2.1:q4_K_M"
+DEFAULT_TBANK_MODEL = "llama3.1:8b"
 DEFAULT_LOCAL_ENDPOINT = "http://localhost:11434/v1"
 DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
@@ -235,22 +235,29 @@ def generate_with_llm(
             target_endpoint = target_endpoint.rstrip("/") + "/v1"
         target_model = model_name or get_secret_or_env("TBANK_MODEL") or DEFAULT_TBANK_MODEL
 
-        # Если в Ollama не скачана 33B Т-Банк, проверяем доступные локальные модели
+        # Автоматический выбор быстрой модели, если модель явно не задана или отсутствует
         if "localhost" in target_endpoint or "127.0.0.1" in target_endpoint:
             try:
                 base_check = target_endpoint.replace("/v1", "").rstrip("/") + "/api/tags"
-                with httpx.Client(timeout=0.6) as c:
+                with httpx.Client(timeout=1.0) as c:
                     r_tags = c.get(base_check)
                     if r_tags.status_code == 200:
                         installed = [m.get("name") for m in r_tags.json().get("models", [])]
-                        if installed and target_model not in installed:
-                            # Выбираем наиболее подходящую из имеющихся
-                            for pref in ["t-tech/T-pro-it-2.1:q4_K_M", "llama3.1:8b", "llama3.1", "qwen2.5:14b", "qwen2.5"]:
-                                if pref in installed:
-                                    target_model = pref
-                                    break
-                            else:
-                                target_model = installed[0]
+                        if installed:
+                            if not model_name:
+                                for pref in ["llama3.1:8b", "llama3.1", "qwen2.5-coder:14b", "t-tech/T-pro-it-2.1:q4_K_M"]:
+                                    if pref in installed:
+                                        target_model = pref
+                                        break
+                                else:
+                                    target_model = installed[0]
+                            elif target_model not in installed:
+                                for pref in ["llama3.1:8b", "llama3.1", "qwen2.5-coder:14b", "t-tech/T-pro-it-2.1:q4_K_M"]:
+                                    if pref in installed:
+                                        target_model = pref
+                                        break
+                                else:
+                                    target_model = installed[0]
             except Exception:
                 pass
 
@@ -258,16 +265,19 @@ def generate_with_llm(
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
+        is_large = any(x in target_model.lower() for x in ("32b", "33b", "70b", "t-pro"))
+        timeout_sec = 240.0 if is_large else float(os.getenv("LLM_TIMEOUT", "90"))
+        max_tokens = 1024 if is_large else 1536
+
         payload = {
             "model": target_model,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": prompt},
             ],
-            "temperature": 0.2,
-            "max_tokens": 2048,
+            "temperature": 0.3,
+            "max_tokens": max_tokens,
         }
-        timeout_sec = float(os.getenv("LLM_TIMEOUT", "120"))
         try:
             with httpx.Client(timeout=timeout_sec) as client:
                 url = f"{target_endpoint.rstrip('/')}/chat/completions"
