@@ -30,7 +30,11 @@ import streamlit as st
 # Импорт графа агента и LLM утилит
 try:
     from pathrag.agent import ask_agent
-    from pathrag.agent.llm import test_llm_connection
+    from pathrag.agent.llm import (
+        get_secret_or_env,
+        is_local_ollama_available,
+        test_llm_connection,
+    )
 except ImportError as e:
     st.error(f"Ошибка импорта модулей Pathology RAG: {e}")
     st.stop()
@@ -246,25 +250,37 @@ with st.sidebar:
     st.markdown("#### ⚙️ **Модель генерации (LLM)**")
 
     llm_options_map = {
-        "tbank_local": "🟡 Т-Банк LLM (T-Tech T-pro 2.1) · локальный инференс",
-        "free_cloud": "🌐 Free Cloud AI (T-Tech / Qwen) · без ключей (для деплоя)",
-        "autonomous": "🔬 Автономный клинический RAG · без LLM (офлайн)",
+        "groq": "⚡ Groq Cloud · Llama 3.3 70B (Бесплатно, сверхбыстро)",
+        "tbank_local": "🟡 Т-Банк LLM / Ollama (T-Tech T-pro 2.1 / Llama 3.1) · локально",
+        "free_cloud": "🌐 Free Cloud AI (Zero Config) · без ключей (для деплоя)",
+        "gemini": "🤖 Google Gemini (Flash 2.0 / 1.5) · бесплатно",
+        "openrouter": "🌐 OpenRouter (Бесплатные модели :free)",
+        "gigachat": "🟢 Сбер GigaChat Pro (152-ФЗ)",
+        "autonomous": "🔬 Автономный RAG-синтез · без LLM (офлайн)",
     }
 
-    # Авто-проверка доступности локального сервера Т-Банка (Ollama)
-    _local_ollama_available = False
-    try:
-        import httpx
-        with httpx.Client(timeout=0.3) as client:
-            r = client.get("http://localhost:11434/api/version")
-            _local_ollama_available = (r.status_code == 200)
-    except Exception:
-        _local_ollama_available = False
+    _local_ollama_available = is_local_ollama_available()
+    groq_secret = get_secret_or_env("GROQ_API_KEY")
+    gemini_secret = get_secret_or_env("GEMINI_API_KEY")
+    openrouter_secret = get_secret_or_env("OPENROUTER_API_KEY")
+    gigachat_secret = get_secret_or_env("GIGACHAT_CREDENTIALS")
 
-    default_llm = "tbank_local" if _local_ollama_available else "free_cloud"
+    # Умный выбор модели по умолчанию
+    if groq_secret:
+        default_llm = "groq"
+    elif _local_ollama_available:
+        default_llm = "tbank_local"
+    elif gemini_secret:
+        default_llm = "gemini"
+    elif openrouter_secret:
+        default_llm = "openrouter"
+    elif gigachat_secret:
+        default_llm = "gigachat"
+    else:
+        default_llm = "free_cloud"
 
     selected_llm_key = st.selectbox(
-        "Провайдер интеллекта (без API-ключей):",
+        "Провайдер генерации ответа из чанков:",
         options=list(llm_options_map.keys()),
         format_func=lambda k: llm_options_map[k],
         index=list(llm_options_map.keys()).index(default_llm),
@@ -274,17 +290,84 @@ with st.sidebar:
     custom_endpoint = None
     custom_model_name = None
 
-    if selected_llm_key == "tbank_local":
-        st.success("✨ Открытая модель Т-Банка (T-Tech T-pro 2.1) подключена напрямую без ключей.")
-        with st.expander("Параметры локального сервера"):
+    if selected_llm_key == "groq":
+        st.success("⚡ Сверхбыстрый бесплатный LPU-инференс (Llama 3.3 70B / Qwen 2.5 32B).")
+        api_key_val = st.text_input(
+            "Groq API Key:",
+            value=groq_secret,
+            type="password",
+            placeholder="gsk_...",
+            help="Получите бесплатный ключ за 30 секунд без банковской карты на https://console.groq.com",
+        )
+        custom_model_name = st.selectbox(
+            "Модель на Groq:",
+            options=["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen-2.5-32b"],
+            index=0,
+        )
+        if not api_key_val:
+            st.info("💡 Ключ можно ввести выше или сохранить в Streamlit Cloud Secrets (`GROQ_API_KEY`). Ключ 100% бесплатный на [console.groq.com](https://console.groq.com).")
+
+    elif selected_llm_key == "tbank_local":
+        st.success("🟡 Инференс через локальный сервер Ollama / vLLM.")
+        with st.expander("Параметры локального сервера", expanded=not _local_ollama_available):
             custom_endpoint = st.text_input("Эндпоинт Ollama / vLLM:", value="http://localhost:11434/v1")
-            custom_model_name = st.text_input("Имя модели Т-Банка:", value="t-tech/T-pro-it-2.1:q4_K_M")
+            custom_model_name = st.selectbox(
+                "Модель Ollama:",
+                options=["llama3.1:8b", "t-tech/T-pro-it-2.1:q4_K_M", "qwen2.5-coder:14b", "llama3.1", "qwen2.5"],
+                index=0,
+            )
 
     elif selected_llm_key == "free_cloud":
         st.success("✨ Работает онлайн прямо в браузере без API-ключей (Zero Config).")
+        st.caption("Использует открытый облачный инференс для формирования ответа из чанков.")
+
+    elif selected_llm_key == "gemini":
+        st.success("🤖 Бесплатный доступ к моделям Google Gemini.")
+        api_key_val = st.text_input(
+            "Gemini API Key:",
+            value=gemini_secret,
+            type="password",
+            placeholder="AIza...",
+            help="Бесплатный ключ на https://aistudio.google.com",
+        )
+        custom_model_name = st.selectbox(
+            "Модель Gemini:",
+            options=["gemini-2.0-flash", "gemini-1.5-flash"],
+            index=0,
+        )
+
+    elif selected_llm_key == "openrouter":
+        st.success("🌐 Пул бесплатных открытых моделей через OpenRouter.")
+        api_key_val = st.text_input(
+            "OpenRouter API Key:",
+            value=openrouter_secret,
+            type="password",
+            placeholder="sk-or-...",
+            help="Бесплатный ключ на https://openrouter.ai",
+        )
+        custom_model_name = st.selectbox(
+            "Модель OpenRouter:",
+            options=[
+                "meta-llama/llama-3.3-70b-instruct:free",
+                "google/gemini-2.0-flash-exp:free",
+                "deepseek/deepseek-r1:free",
+                "qwen/qwen-2.5-72b-instruct:free",
+            ],
+            index=0,
+        )
+
+    elif selected_llm_key == "gigachat":
+        st.success("🟢 Сбер GigaChat Pro (152-ФЗ, серверы в РФ).")
+        api_key_val = st.text_input(
+            "GigaChat Client Secret / Токен:",
+            value=gigachat_secret,
+            type="password",
+            placeholder="Вставьте токен Сбера...",
+        )
+        custom_model_name = "GigaChat-Pro"
 
     elif selected_llm_key == "autonomous":
-        st.info("📌 Работает на встроенной верифицированной базе знаний клинических руководств без внешних запросов.")
+        st.info("📌 Работает на встроенной верифицированной базе знаний клинических руководств без внешних запросов к LLM.")
 
     # Кнопка проверки связи с моделью в реальном времени
     if selected_llm_key != "autonomous":
@@ -348,7 +431,7 @@ def _kb_stats() -> dict:
 
 
 _stats = _kb_stats()
-_llm_label = llm_options_map[selected_llm_key].split("·")[0].strip(" 🟡🌐🔬")
+_llm_label = llm_options_map[selected_llm_key].split("·")[0].strip(" ⚡🟡🌐🤖🟢🔬")
 st.markdown(
     f"""
     <section class="hero" role="banner" aria-label="Pathology RAG">
@@ -447,7 +530,10 @@ if "messages" not in st.session_state:
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"], avatar="🧑‍⚕️" if msg["role"] == "user" else "🔬"):
         if msg.get("intent") and msg["role"] == "assistant" and msg.get("intent") != "system_welcome":
-            st.markdown(f'<span class="badge-chip badge-blue">Маршрут: {msg["intent"]}</span>', unsafe_allow_html=True)
+            chips = [f'<span class="badge-chip badge-blue">Маршрут: {msg["intent"]}</span>']
+            if msg.get("llm_used"):
+                chips.append(f'<span class="badge-chip badge-emerald">🧠 {msg["llm_used"]}</span>')
+            st.markdown(" ".join(chips), unsafe_allow_html=True)
 
         st.markdown(msg["content"])
 
@@ -540,8 +626,12 @@ if prompt_input:
             citations = result.get("citations", [])
             disclaimer = result.get("disclaimer", "")
             images = result.get("retrieved_images", [])
+            llm_used = result.get("llm_used")
 
-            st.markdown(f'<span class="badge-chip badge-blue">Маршрут: {intent}</span>', unsafe_allow_html=True)
+            chips = [f'<span class="badge-chip badge-blue">Маршрут: {intent}</span>']
+            if llm_used:
+                chips.append(f'<span class="badge-chip badge-emerald">🧠 {llm_used}</span>')
+            st.markdown(" ".join(chips), unsafe_allow_html=True)
             st.markdown(answer)
 
             if images:
@@ -589,4 +679,5 @@ if prompt_input:
                 "images": images,
                 "citations": citations,
                 "disclaimer": disclaimer,
+                "llm_used": llm_used,
             })
