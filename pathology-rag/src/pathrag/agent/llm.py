@@ -40,7 +40,7 @@ def get_secret_or_env(name: str, default: str = "") -> str:
 
 def is_local_ollama_available(endpoint: str | None = None) -> bool:
     """Быстро проверяет, доступен ли локальный сервер Ollama / vLLM."""
-    target = endpoint or get_secret_or_env("OLLAMA_ENDPOINT") or "http://localhost:11434"
+    target = endpoint or get_secret_or_env("VLLM_ENDPOINT") or get_secret_or_env("OLLAMA_ENDPOINT") or DEFAULT_LOCAL_ENDPOINT
     try:
         import httpx
         url = target.replace("/v1", "").rstrip("/") + "/api/version"
@@ -231,6 +231,8 @@ def generate_with_llm(
     # --- 4. Т-Банк LLM (T-Tech T-pro 2.1) / Локальный Ollama / vLLM ---
     if provider in ("tbank_local", "openai_compat") or (provider == "auto" and is_local_ollama_available()):
         target_endpoint = endpoint_url or get_secret_or_env("VLLM_ENDPOINT") or get_secret_or_env("OLLAMA_ENDPOINT") or DEFAULT_LOCAL_ENDPOINT
+        if not target_endpoint.endswith("/v1") and ("11434" in target_endpoint or "8000" in target_endpoint):
+            target_endpoint = target_endpoint.rstrip("/") + "/v1"
         target_model = model_name or get_secret_or_env("TBANK_MODEL") or DEFAULT_TBANK_MODEL
 
         # Если в Ollama не скачана 33B Т-Банк, проверяем доступные локальные модели

@@ -25,6 +25,8 @@ def router_decision(state: AgentState) -> str:
         return "legal_consultant"
     elif intent == "literature_search":
         return "literature_search"
+    elif intent == "conversational":
+        return "generate_answer"
     return "retrieve_pathology"
 
 
@@ -60,6 +62,7 @@ def build_pathology_graph():
             "image_search": "image_search",
             "legal_consultant": "legal_consultant",
             "literature_search": "literature_search",
+            "generate_answer": "generate_answer",
         },
     )
 

@@ -188,11 +188,9 @@ def retrieve(
             score *= 1.25
         scored.append({**doc, "score": round(score, 3)})
 
-    scored.sort(key=lambda x: x["score"], reverse=True)
-    results = scored[:top_k]
-    if not results and corpus:
-        results = [{**corpus[0], "score": 0.0}]
-    return results
+    positive_hits = [d for d in scored if d.get("score", 0) > 0.05]
+    positive_hits.sort(key=lambda x: x["score"], reverse=True)
+    return positive_hits[:top_k]
 
 
 _STOP = set("""и в во на не что как это для по из от до при или но а же ли бы то так все его её их он она они

@@ -39,6 +39,20 @@ except ImportError as e:
     st.error(f"Ошибка импорта модулей Pathology RAG: {e}")
     st.stop()
 
+def _btn_stretch(label: str, **kwargs) -> bool:
+    try:
+        return st.button(label, width="stretch", **kwargs)
+    except TypeError:
+        return st.button(label, use_container_width=True, **kwargs)
+
+
+def _img_stretch(src: Any, caption: str | None = None) -> None:
+    try:
+        st.image(src, caption=caption, width="stretch")
+    except TypeError:
+        st.image(src, caption=caption, use_container_width=True)
+
+
 # -----------------------------------------------------------------------------
 # 1. Настройка страницы и бело-голубой медицинский стиль (Clinical Minimalist)
 # -----------------------------------------------------------------------------
@@ -369,8 +383,8 @@ with st.sidebar:
     )
 
     api_key_val = None
-    custom_endpoint = None
-    custom_model_name = None
+    custom_endpoint = "http://localhost:11434/v1"
+    custom_model_name = "llama3.1:8b"
 
     if selected_llm_key == "groq":
         st.success("⚡ Сверхбыстрый бесплатный LPU-инференс (Llama 3.3 70B / Qwen 2.5 32B).")
@@ -453,7 +467,7 @@ with st.sidebar:
 
     # Кнопка проверки связи с моделью в реальном времени
     if selected_llm_key != "autonomous":
-        if st.button("🧪 Проверить связь с моделью", use_container_width=True):
+        if _btn_stretch("🧪 Проверить связь с моделью"):
             with st.spinner("Тестирование соединения с моделью..."):
                 ok, msg = test_llm_connection(
                     provider=selected_llm_key,
@@ -632,10 +646,10 @@ for msg in st.session_state.messages:
                     src = resolve_img_source(img)
                     if src:
                         try:
-                            st.image(src, caption=img.get("title", "Микропрепарат"), use_container_width=True)
+                            _img_stretch(src, caption=img.get("title", "Микропрепарат"))
                         except Exception:
                             if img.get("image_url"):
-                                st.image(img.get("image_url"), caption=img.get("title", "Микропрепарат"), use_container_width=True)
+                                _img_stretch(img.get("image_url"), caption=img.get("title", "Микропрепарат"))
 
                     wsi_link = img.get("wsi_url") or img.get("image_url") or ""
                     st.markdown(
@@ -727,10 +741,10 @@ if prompt_input:
                         src = resolve_img_source(img)
                         if src:
                             try:
-                                st.image(src, caption=img.get("title", "Микропрепарат"), use_container_width=True)
+                                _img_stretch(src, caption=img.get("title", "Микропрепарат"))
                             except Exception:
                                 if img.get("image_url"):
-                                    st.image(img.get("image_url"), caption=img.get("title", "Микропрепарат"), use_container_width=True)
+                                    _img_stretch(img.get("image_url"), caption=img.get("title", "Микропрепарат"))
 
                         wsi_link = img.get("wsi_url") or img.get("image_url") or ""
                         st.markdown(

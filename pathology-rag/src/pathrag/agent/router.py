@@ -65,5 +65,16 @@ def route_intent(query: str, explicit_mode: str | None = None) -> str:
     if any(k in q for k in brca_keywords):
         return "breast_cancer_ihc"
 
-    # 5. По умолчанию — общая патоморфология
+    # 5. Приветствие, знакомство и вопросы о возможностях системы
+    greeting_tokens = {
+        "привет", "здравствуй", "здравствуйте", "добрый", "салют", "hello", "hi", "hey",
+        "помощь", "help", "меню", "start", "старт", "начать"
+    }
+    cleaned_words = [w.strip(".,;:?!()") for w in q.split() if w.strip(".,;:?!()")]
+    if any(w in greeting_tokens for w in cleaned_words[:2]) and len(cleaned_words) <= 5:
+        return "conversational"
+    if any(phrase in q for phrase in ("кто ты", "что ты умеешь", "как тебя зовут", "расскажи о себе", "твои функции")):
+        return "conversational"
+
+    # 6. По умолчанию — общая патоморфология
     return "pathology_qa"
