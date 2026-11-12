@@ -228,19 +228,41 @@ def _call_gigachat(system: str, prompt: str, credentials: str, model_name: str |
     return None, label
 
 
-def _call_free_cloud(system: str, prompt: str):
-    """Pollinations anonymous tier. Запрос уходит на публичный сервер — только по явному выбору."""
-    label = "Free Cloud AI (Zero-Config)"
+FREE_CLOUD_URL = "https://text.pollinations.ai/"
+FREE_CLOUD_LABEL = "Free Cloud AI (Zero-Config)"
+
+
+def _free_cloud_timeout() -> float:
+    # Анонимный tier Pollinations отвечает 5–30 с, а с длинным RAG-контекстом и дольше
+    return float(os.getenv("FREE_CLOUD_TIMEOUT", "60"))
+
+
+def _free_cloud_request(system: str, prompt: str) -> tuple[str | None, str]:
+    """Pollinations anonymous tier. Возвращает (ответ или None, причина неудачи для диагностики)."""
     payload = {"messages": _messages(system, prompt), "model": "openai-fast", "temperature": 0.3}
+    timeout = _free_cloud_timeout()
     try:
-        res = _post_json("https://text.pollinations.ai/", payload, {"Content-Type": "application/json"}, 22.0)
+        res = _post_json(FREE_CLOUD_URL, payload, {"Content-Type": "application/json"}, timeout)
+    except httpx.TimeoutException:
+        return None, f"сервер не ответил за {timeout:.0f} с"
     except Exception as e:
-        log.debug("Free Cloud AI failed: %s", e)
-        return None, label
+        return None, f"ошибка сети: {e}"
     text = res.text.strip()
-    if res.status_code == 200 and len(text) > 30 and "limit reached" not in text.lower():
-        return text, label
-    return None, label
+    if res.status_code == 429 or "limit reached" in text.lower():
+        return None, "превышен лимит запросов анонимного доступа, повторите через минуту"
+    if res.status_code != 200:
+        return None, f"HTTP {res.status_code}: {text[:120]}"
+    if not text:
+        return None, "пустой ответ"
+    return text, ""
+
+
+def _call_free_cloud(system: str, prompt: str):
+    """Запрос уходит на публичный сервер — только по явному выбору free_cloud или в режиме auto."""
+    ans, reason = _free_cloud_request(system, prompt)
+    if not ans:
+        log.warning("Free Cloud AI failed: %s", reason)
+    return ans, FREE_CLOUD_LABEL
 
 
 def _generate(prompt: str, system: str, provider: str, api_key: str | None,
@@ -319,6 +341,15 @@ def test_llm_connection(
         if not is_local_ollama_available(ep):
             return False, f"Сервер Ollama недоступен по адресу {ep}. Запустите его командой: ollama serve (или bash scripts/setup_local_llm.sh)"
 
+    if provider == "free_cloud":
+        reply, reason = _free_cloud_request("Отвечай кратко одним словом.", "Тест связи. Ответь одним словом: 'Готов'.")
+        if reply:
+            return True, f"Соединение успешно! Ответ модели: {reply.replace(chr(10), ' ')[:60]}"
+        return False, (
+            f"Публичный сервер Free Cloud недоступен ({reason}). "
+            "Для надежной работы укажите бесплатный ключ Groq (console.groq.com) в панели слева."
+        )
+
     try:
         reply, _ = generate_with_llm(
             prompt="Тест связи. Ответь одним словом: 'Готов'.",
@@ -335,8 +366,6 @@ def test_llm_connection(
         if len(preview) > 60:
             preview = preview[:60] + "..."
         return True, f"Соединение успешно! Ответ модели: {preview}"
-    if provider == "free_cloud":
-        return False, "Публичный сервер Free Cloud сейчас перегружен. Для надежной работы укажите бесплатный ключ Groq (console.groq.com) в панели слева."
     return False, "Модель вернула пустой ответ, ошибку или превысила таймаут (подробности в логе)."
 
 
