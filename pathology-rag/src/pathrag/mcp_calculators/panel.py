@@ -45,7 +45,7 @@ def dispatch(source, method, params):
             return cached_pubmed(method, params)
         except PubmedError as exc:
             return {}, exc.args[1], exc.args[0]
-    return invoke_network(source, method, params)
+    return invoke_network(source, method, params, autostart=True)
 
 
 def render():

@@ -4,6 +4,7 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx
 
+from . import local_service
 from .client import REVISION, ProtocolError
 
 LOCAL = "http://127.0.0.1:8000/sse"
@@ -97,8 +98,8 @@ async def remote(client, method, params, trace):
             await client.delete(PUBMED, headers=headers)
 
 
-async def run(source, method, params, trace):
-    async with httpx.AsyncClient(timeout=8) as client:
+async def run(source, method, params, trace, autostart=False):
+    async with httpx.AsyncClient(timeout=8, trust_env=source == "PubMed") as client:
         if source == "PubMed":
             return await remote(client, method, params, trace)
         try:
@@ -106,15 +107,24 @@ async def run(source, method, params, trace):
         except httpx.ConnectError:
             if trace:
                 raise
-            await asyncio.sleep(0.3)
-            return await local(client, method, params, trace)
+            process = local_service.start() if autostart else None
+            for _ in range(20 if autostart else 1):
+                await asyncio.sleep(0.3)
+                try:
+                    return await local(client, method, params, trace)
+                except httpx.ConnectError:
+                    if trace:
+                        raise
+                    if process is not None and process.poll() is not None:
+                        raise RuntimeError(f"SSE-сервер завершился с кодом {process.returncode}. Подробности в журнале Streamlit.") from None
+            raise RuntimeError(f"SSE-сервер недоступен по адресу {LOCAL}. Проверьте запуск сервера на порту 8000.") from None
 
 
-def invoke_network(source, method, params):
+def invoke_network(source, method, params, *, autostart=False):
     trace = []
     try:
-        result = asyncio.run(asyncio.wait_for(run(source, method, params, trace), timeout=12))
-    except (httpx.HTTPError, TimeoutError, ValueError, KeyError, StopAsyncIteration, ProtocolError) as exc:
+        result = asyncio.run(asyncio.wait_for(run(source, method, params, trace, autostart), timeout=12))
+    except (httpx.HTTPError, TimeoutError, ValueError, KeyError, StopAsyncIteration, ProtocolError, RuntimeError, OSError) as exc:
         return {}, trace, str(exc) or "Сервис не ответил вовремя."
     error = "\n".join(x.get("text", "") for x in result.get("content", [])) if result.get("isError") else None
     return result, trace, error
