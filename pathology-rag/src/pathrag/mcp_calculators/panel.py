@@ -73,7 +73,7 @@ def render():
     args = {}
     with st.form("calc_" + name):
         for key, spec in tool["inputSchema"].get("properties", {}).items():
-            if key not in tool["inputSchema"].get("required", []) and source == "PubMed":
+            if source == "PubMed" and key != "query" and key not in tool["inputSchema"].get("required", []):
                 continue
             if "enum" in spec:
                 args[key] = st.selectbox(LABELS.get(key, key), spec["enum"], index=None)
@@ -96,7 +96,7 @@ def render():
     if not submit:
         return
     if None in args.values():
-        st.warning("Заполните все поля.")
+        st.warning("Введите поисковый запрос." if source == "PubMed" else "Заполните все поля.")
         return
     with st.spinner("Вызов инструмента"):
         result, trace, error = dispatch(source, "tools/call", {"name": name, "arguments": args})
