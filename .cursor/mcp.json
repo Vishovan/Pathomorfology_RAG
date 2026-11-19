@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "pathology-calculators": {
+      "command": "python",
+      "args": ["-m", "pathrag.mcp_calculators.server"],
+      "env": { "PYTHONPATH": "${workspaceFolder}/pathology-rag/src" }
+    }
+  }
+}

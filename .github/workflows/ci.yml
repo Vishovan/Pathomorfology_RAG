@@ -17,8 +17,15 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: pip install -e ".[ui,dev]"
+        run: pip install -e ".[ui,dev,mcp]"
       - name: Lint
         run: ruff check .
       - name: Test
         run: pytest -q
+      - name: Local MCP integration
+        run: |
+          python scripts/check_mcp.py stdio
+          python -m pathrag.mcp_calculators.network_server &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          python scripts/check_mcp.py SSE

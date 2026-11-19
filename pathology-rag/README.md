@@ -177,3 +177,12 @@ python scripts/eval_benchmark.py
 - [Ведомость документов по ГОСТ 34.201-2020](docs/gost/Vedomost_Dokumentov_GOST_34_201_2020.md) — Комплектность проектной и эксплуатационной документации.
 - [Описание архитектуры по ГОСТ Р 59795-2021](docs/gost/Architecture_and_Data_GOST_59795_2021.md) — Схемы данных, named vectors в Qdrant и потоки данных в LangGraph.
 - [Регуляторный статус и Non-SaMD статус](docs/gost/Intended_Use_and_Regulatory_Limitations.md) — Анализ критериев Росздравнадзора и дисклеймеры.
+
+### Локальные MCP-калькуляторы
+
+Из каталога `pathology-rag` в окружении Python 3.12 установите зависимости
+командой `python -m pip install -e '.[mcp]'`. Настройте stdio-клиент на Python
+из этого окружения с аргументами `-m pathrag.mcp_calculators.server`.
+Через `tools/list` доступны Nottingham Grade, индекс Ki-67, H-score и справочник
+`list_calculators`. Пример аргументов для `nottingham`:
+`{"tubules":2,"nuclei":3,"mitoses":2}`. Ожидается сумма 7 и Grade 2.

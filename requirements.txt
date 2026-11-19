@@ -11,3 +11,4 @@ httpx
 pillow
 pytest
 gigachat   # провайдер Сбер GigaChat (опционально)
+mcp>=2,<3

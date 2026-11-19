@@ -21,6 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+mcp = ["mcp>=2,<3"]
 # Векторный индекс (Qdrant + bge-m3) и пайплайн загрузки PDF
 index = [
     "llama-index-core",

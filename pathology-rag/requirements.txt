@@ -17,3 +17,4 @@ pillow
 transformers   # нужен только для PLIP (PATHRAG_IMAGE_MODEL=vinid/plip)
 streamlit>=1.30.0
 gigachat   # провайдер Сбер GigaChat (опционально)
+mcp>=2,<3
